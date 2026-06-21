@@ -17,6 +17,7 @@ import kotlin.math.abs
 enum class FilterType(val displayName: String) {
     ALL("全部"),
     SIMILAR("相似"),
+    LARGE("超大媒体"),
     USELESS("建议清理"),
     UNCERTAIN("人工审查"),
     KEEP("保留")
@@ -71,6 +72,7 @@ class ReviewViewModel @Inject constructor(
                 val filtered = when (filter) {
                     FilterType.ALL -> photos
                     FilterType.SIMILAR -> photos
+                    FilterType.LARGE -> photos.sortedByDescending { it.size }
                     FilterType.USELESS -> photos.filter { it.classification == Classification.USELESS }
                     FilterType.UNCERTAIN -> photos.filter { it.classification == Classification.UNCERTAIN }
                     FilterType.KEEP -> photos.filter { it.classification == Classification.KEEP }

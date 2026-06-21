@@ -9,8 +9,7 @@ import com.photocleaner.domain.model.Classification
 import com.photocleaner.domain.model.Photo
 import com.photocleaner.domain.repository.PhotoRepository
 import com.photocleaner.domain.usecase.ScanPhotosUseCase
-import com.photocleaner.domain.usecase.ClassifyPhotosUseCase
-import com.photocleaner.service.ScanService
+import com.photocleaner.domain.usecase.ScanLogStatus
 import com.photocleaner.service.ScanStateHolder
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -45,7 +44,6 @@ data class ScanUiState(
 class ScanViewModel @Inject constructor(
     @ApplicationContext private val appContext: Context,
     private val scanPhotosUseCase: ScanPhotosUseCase,
-    private val classifyPhotosUseCase: ClassifyPhotosUseCase,
     private val settingsRepository: SettingsRepository,
     private val photoRepository: PhotoRepository,
     private val scanStateHolder: ScanStateHolder
@@ -151,17 +149,82 @@ class ScanViewModel @Inject constructor(
         }
     }
 
+    private var scanJob: Job? = null
+
     fun startScan() {
         val currentState = scanStateHolder.uiState.value
         if (currentState.isScanning || currentState.isClassifying) return
 
-        // Save directories first
         viewModelScope.launch {
             settingsRepository.setSelectedDirectories(_localState.value.selectedDirectories)
         }
 
-        // Start the foreground service
-        ScanService.startScan(appContext)
+        scanStateHolder.updateState {
+            it.copy(
+                isScanning = true,
+                isPaused = false,
+                error = null,
+                scanComplete = false,
+                classifyComplete = false,
+                scanLogs = emptyList()
+            )
+        }
+        scanStateHolder.addLog(ScanLogEntry(message = "🔍 开始扫描照片...", status = LogStatus.INFO))
+
+        scanJob = viewModelScope.launch {
+            try {
+                val batchSize = settingsRepository.getBatchSizeSync()
+                val selectedDirectories = settingsRepository.getSelectedDirectoriesSync()
+
+                if (batchSize > 0) {
+                    scanStateHolder.addLog(ScanLogEntry(message = "📦 每次处理数量: $batchSize", status = LogStatus.INFO))
+                }
+
+                val isPaused = { scanStateHolder.uiState.value.isPaused }
+
+                val photos = scanPhotosUseCase(
+                    selectedDirectories = selectedDirectories,
+                    batchSize = batchSize,
+                    isPaused = isPaused,
+                    onProgress = { scanned, total ->
+                        scanStateHolder.updateState { state ->
+                            state.copy(scannedCount = scanned, totalToScan = total)
+                        }
+                    },
+                    onLog = { log ->
+                        scanStateHolder.addLog(ScanLogEntry(
+                            photoName = log.photoName,
+                            status = when (log.status) {
+                                com.photocleaner.domain.usecase.ScanLogStatus.PROCESSING -> LogStatus.PROCESSING
+                                com.photocleaner.domain.usecase.ScanLogStatus.LOCAL_HIT -> LogStatus.LOCAL_HIT
+                                com.photocleaner.domain.usecase.ScanLogStatus.SUCCESS -> LogStatus.SUCCESS
+                                com.photocleaner.domain.usecase.ScanLogStatus.ERROR -> LogStatus.ERROR
+                                com.photocleaner.domain.usecase.ScanLogStatus.INFO -> LogStatus.INFO
+                            },
+                            message = log.message
+                        ))
+                    }
+                )
+
+                val uselessCount = photos.count { it.classification == Classification.USELESS }
+                scanStateHolder.updateState {
+                    it.copy(
+                        isScanning = false,
+                        scanComplete = true,
+                        classifyComplete = true, // Directly complete since cloud AI is removed
+                        photos = photos,
+                        uselessFound = uselessCount
+                    )
+                }
+            } catch (e: Exception) {
+                if (e !is kotlinx.coroutines.CancellationException) {
+                    scanStateHolder.updateState {
+                        it.copy(isScanning = false, error = e.message ?: "扫描失败")
+                    }
+                    scanStateHolder.addLog(ScanLogEntry(message = "❌ 扫描失败: ${e.message}", status = LogStatus.ERROR))
+                }
+            }
+        }
     }
 
     fun pauseScan() {
@@ -175,8 +238,16 @@ class ScanViewModel @Inject constructor(
     }
 
     fun stopScan() {
-        // Tell the service to stop
-        ScanService.stop(appContext)
+        scanJob?.cancel()
+        scanStateHolder.updateState {
+            it.copy(
+                isScanning = false,
+                isPaused = false,
+                isClassifying = false,
+                isClassifyPaused = false
+            )
+        }
+        scanStateHolder.addLog(ScanLogEntry(message = "⏹️ 已停止", status = LogStatus.INFO))
     }
 
     fun pauseClassify() {
@@ -190,7 +261,7 @@ class ScanViewModel @Inject constructor(
     }
 
     fun reset() {
-        ScanService.stop(appContext)
+        scanJob?.cancel()
         scanStateHolder.reset()
         _localState.update { ScanUiState() }
     }

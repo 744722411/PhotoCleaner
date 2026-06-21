@@ -16,6 +16,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.photocleaner.ui.components.GlassCard
@@ -71,114 +72,40 @@ fun SettingsScreen(
             GlassCard(
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Column(modifier = Modifier.padding(20.dp)) {
-                    ModernSectionHeader(
-                        title = "🤖 AI 高级配置 (可选)",
-                        icon = Icons.Default.Key
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(
-                        text = "配置 OpenAI API Key 以启用云端高阶语义分析。留空则仅使用本地快速分析。",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.White.copy(alpha = 0.8f)
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    OutlinedTextField(
-                        value = baseUrlInput,
-                        onValueChange = { baseUrlInput = it },
-                        label = { Text("Base URL", color = Color.White) },
-                        placeholder = { Text("https://api.openai.com/") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = TextFieldDefaults.colors(
-                            focusedContainerColor = DarkSurfaceVariant,
-                            unfocusedContainerColor = DarkSurfaceVariant,
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White
-                        )
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    OutlinedTextField(
-                        value = apiKeyInput,
-                        onValueChange = { apiKeyInput = it },
-                        label = { Text("API Key", color = Color.White) },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        visualTransformation = PasswordVisualTransformation(),
-                        colors = TextFieldDefaults.colors(
-                            focusedContainerColor = DarkSurfaceVariant,
-                            unfocusedContainerColor = DarkSurfaceVariant,
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White
-                        )
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    OutlinedTextField(
-                        value = modelInput,
-                        onValueChange = { modelInput = it },
-                        label = { Text("AI 模型", color = Color.White) },
-                        placeholder = { Text("gpt-4o-mini") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = TextFieldDefaults.colors(
-                            focusedContainerColor = DarkSurfaceVariant,
-                            unfocusedContainerColor = DarkSurfaceVariant,
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White
-                        )
-                    )
-
-                    if (uiState.testResult != null) {
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Text(
-                            text = uiState.testResult!!,
-                            color = if (uiState.testSuccess) GreenAccent else RedAccent,
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                Column(
+                    modifier = Modifier.padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(64.dp)
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(GreenAccent.copy(alpha = 0.15f)),
+                        contentAlignment = Alignment.Center
                     ) {
-                        OutlinedButton(
-                            onClick = {
-                                viewModel.testConnection(baseUrlInput, apiKeyInput, modelInput)
-                            },
-                            enabled = !uiState.isTestingConnection,
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(12.dp),
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
-                        ) {
-                            if (uiState.isTestingConnection) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(16.dp),
-                                    strokeWidth = 2.dp,
-                                    color = Color.White
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                            }
-                            Text("测试")
-                        }
-                        Button(
-                            onClick = {
-                                viewModel.setBaseUrl(baseUrlInput.trim())
-                                viewModel.setApiKey(apiKeyInput.trim())
-                                viewModel.setModel(modelInput.trim())
-                            },
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(12.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = BlueAccent)
-                        ) {
-                            Text("保存", color = Color.White)
-                        }
+                        Icon(
+                            imageVector = Icons.Default.Security,
+                            contentDescription = null,
+                            tint = GreenAccent,
+                            modifier = Modifier.size(36.dp)
+                        )
                     }
+                    Spacer(modifier = Modifier.height(20.dp))
+                    Text(
+                        text = "100% 离线隐私安全",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = "应用已彻底停用并关闭了一切网络连接权限（INTERNET）。\n\n您的照片、感知哈希特征、清晰度扫描日志及所有数据完全在本地计算和运行。不上传任何服务器，不消耗流量，全力保护您的隐私。极其适合在无网飞机舱、户外等场景下安心使用。",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.White.copy(alpha = 0.7f),
+                        textAlign = TextAlign.Center,
+                        lineHeight = 22.sp
+                    )
                 }
             }
         }

@@ -17,10 +17,6 @@ object PermissionHelper {
         } else {
             permissions.add(Manifest.permission.READ_EXTERNAL_STORAGE)
         }
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            permissions.add(Manifest.permission.POST_NOTIFICATIONS)
-        }
         return permissions.toTypedArray()
     }
 

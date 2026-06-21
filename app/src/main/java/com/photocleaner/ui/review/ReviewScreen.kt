@@ -233,6 +233,7 @@ fun ReviewScreen(
                             val color = when (filter) {
                                 FilterType.ALL -> BlueAccent
                                 FilterType.SIMILAR -> YellowAccent
+                                FilterType.LARGE -> Purple80
                                 FilterType.USELESS -> RedAccent
                                 FilterType.UNCERTAIN -> Color(0xFFFF9800)
                                 FilterType.KEEP -> GreenAccent

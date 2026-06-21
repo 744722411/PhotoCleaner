@@ -8,15 +8,6 @@
     <!-- 读取外部存储（Android 12 及以下兼容） -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
         android:maxSdkVersion="32" />
-    <!-- 网络访问（调用 AI API） -->
-    <uses-permission android:name="android.permission.INTERNET" />
-    <!-- 前台服务（后台扫描） -->
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
-    <!-- 防止CPU休眠（后台扫描时保持运行） -->
-    <uses-permission android:name="android.permission.WAKE_LOCK" />
-    <!-- Android 13+ 通知权限 -->
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <!-- ❌ 显式移除依赖库可能注入的多余权限（MIUI等系统会显示） -->
     <uses-permission android:name="android.permission.SEND_SMS" tools:node="remove" />
@@ -38,7 +29,7 @@
     <application
         android:name=".PhotoCleanerApp"
         android:allowBackup="true"
-        android:icon="@mipmap/ic_launcher"
+        android:icon="@drawable/ic_launcher_legacy"
         android:label="@string/app_name"
         android:supportsRtl="true"
         android:theme="@style/Theme.PhotoCleaner">
@@ -51,11 +42,5 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-
-        <!-- 前台扫描服务 -->
-        <service
-            android:name=".service.ScanService"
-            android:exported="false"
-            android:foregroundServiceType="dataSync" />
     </application>
 </manifest>
