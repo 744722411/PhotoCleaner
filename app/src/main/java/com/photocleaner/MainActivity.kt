@@ -15,8 +15,11 @@ class MainActivity : ComponentActivity() {
 
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
-    ) { _ ->
-        // Permissions handled - app will function with whatever was granted
+    ) { permissions ->
+        val granted = permissions.entries.any { it.value }
+        if (!granted) {
+            android.widget.Toast.makeText(this, "需要存储权限以扫描照片", android.widget.Toast.LENGTH_LONG).show()
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {

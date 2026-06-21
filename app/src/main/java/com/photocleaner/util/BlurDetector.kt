@@ -18,10 +18,13 @@ object BlurDetector {
         val width = bitmap.width / SAMPLE_SIZE
         val height = bitmap.height / SAMPLE_SIZE
         val gray = Array(height) { IntArray(width) }
+        val rowPixels = IntArray(bitmap.width)
 
         for (y in 0 until height) {
+            val srcY = y * SAMPLE_SIZE
+            bitmap.getPixels(rowPixels, 0, bitmap.width, 0, srcY, bitmap.width, 1)
             for (x in 0 until width) {
-                val pixel = bitmap.getPixel(x * SAMPLE_SIZE, y * SAMPLE_SIZE)
+                val pixel = rowPixels[x * SAMPLE_SIZE]
                 val r = Color.red(pixel)
                 val g = Color.green(pixel)
                 val b = Color.blue(pixel)

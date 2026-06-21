@@ -10,6 +10,7 @@ data class Photo(
     val size: Long,
     val dateAdded: Long,
     val dateModified: Long,
+    val filePath: String = "",
     val classification: Classification = Classification.UNKNOWN,
     val confidence: Float = 0f,
     val category: String = "",

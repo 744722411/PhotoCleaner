@@ -370,7 +370,8 @@ fun HomeScreen(
                         label = { Text("API Key") },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp)
+                        shape = RoundedCornerShape(12.dp),
+                        visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation()
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     OutlinedTextField(

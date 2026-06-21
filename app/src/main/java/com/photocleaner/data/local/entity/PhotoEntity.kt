@@ -21,6 +21,7 @@ data class PhotoEntity(
     val size: Long,
     val dateAdded: Long,
     val dateModified: Long,
+    val filePath: String = "",
     val classification: String = "UNKNOWN",
     val confidence: Float = 0f,
     val category: String = "",

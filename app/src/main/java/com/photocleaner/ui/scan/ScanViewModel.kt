@@ -3,7 +3,7 @@ package com.photocleaner.ui.scan
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.photocleaner.data.repository.DirectoryInfo
+import com.photocleaner.domain.model.DirectoryInfo
 import com.photocleaner.data.repository.SettingsRepository
 import com.photocleaner.domain.model.Classification
 import com.photocleaner.domain.model.Photo

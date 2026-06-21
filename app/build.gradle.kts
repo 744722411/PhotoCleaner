@@ -3,6 +3,7 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose") version "2.1.0"
     id("com.google.dagger.hilt.android")
     id("com.google.devtools.ksp")
+    id("org.jetbrains.kotlin.plugin.serialization") version "2.1.0"
 }
 
 android {
@@ -13,8 +14,8 @@ android {
         applicationId = "com.photocleaner"
         minSdk = 26
         targetSdk = 36
-        versionCode = 13
-        versionName = "1.4.0"
+        versionCode = 14
+        versionName = "1.5.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -34,14 +35,6 @@ android {
     buildFeatures {
         buildConfig = true
         compose = true
-    }
-}
-
-configurations.all {
-    resolutionStrategy {
-        force("org.jetbrains.kotlin:kotlin-stdlib:2.1.0")
-        force("org.jetbrains.kotlin:kotlin-stdlib-jdk8:2.1.0")
-        force("org.jetbrains.kotlin:kotlin-stdlib-jdk7:2.1.0")
     }
 }
 
@@ -67,7 +60,6 @@ dependencies {
     // Navigation - Latest
     implementation("androidx.navigation:navigation-compose:2.9.0")
     implementation("androidx.hilt:hilt-navigation-compose:1.3.0")
-    implementation("androidx.hilt:hilt-lifecycle-viewmodel-compose:1.3.0")
 
     // Hilt - Latest (2.59.2)
     implementation("com.google.dagger:hilt-android:2.59.2")
@@ -95,9 +87,13 @@ dependencies {
 
     // Coroutines - Latest
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
 
     // DataStore Preferences - Latest
     implementation("androidx.datastore:datastore-preferences:1.1.7")
+    
+    // Security Crypto
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
 
     // Baseline Profiles
     implementation("androidx.profileinstaller:profileinstaller:1.4.1")

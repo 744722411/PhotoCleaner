@@ -542,7 +542,7 @@ fun DeleteConfirmDialog(
                     fontWeight = FontWeight.Medium
                 )
                 Text(
-                    text = "此操作无法撤销。请确保您已备份重要照片。",
+                    text = "删除后仍可在回收站中恢复。",
                     style = MaterialTheme.typography.bodyMedium,
                     color = YellowAccent,
                     textAlign = TextAlign.Center

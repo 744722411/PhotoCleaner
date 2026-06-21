@@ -11,9 +11,11 @@ object ImageUtils {
         var totalBrightness = 0.0
         var count = 0
 
+        val rowPixels = IntArray(bitmap.width)
         for (y in 0 until bitmap.height step SAMPLE_STEP) {
+            bitmap.getPixels(rowPixels, 0, bitmap.width, 0, y, bitmap.width, 1)
             for (x in 0 until bitmap.width step SAMPLE_STEP) {
-                val pixel = bitmap.getPixel(x, y)
+                val pixel = rowPixels[x]
                 val brightness = (Color.red(pixel) * 0.299 +
                         Color.green(pixel) * 0.587 +
                         Color.blue(pixel) * 0.114) / 255.0
@@ -31,8 +33,9 @@ object ImageUtils {
         // Check variance - very low variance means uniform color
         var variance = 0.0
         for (y in 0 until bitmap.height step SAMPLE_STEP) {
+            bitmap.getPixels(rowPixels, 0, bitmap.width, 0, y, bitmap.width, 1)
             for (x in 0 until bitmap.width step SAMPLE_STEP) {
-                val pixel = bitmap.getPixel(x, y)
+                val pixel = rowPixels[x]
                 val brightness = (Color.red(pixel) * 0.299 +
                         Color.green(pixel) * 0.587 +
                         Color.blue(pixel) * 0.114) / 255.0

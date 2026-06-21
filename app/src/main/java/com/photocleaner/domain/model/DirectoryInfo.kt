@@ -1,4 +1,4 @@
-package com.photocleaner.data.repository
+package com.photocleaner.domain.model
 
 data class DirectoryInfo(
     val relativePath: String,

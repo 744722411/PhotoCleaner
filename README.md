@@ -23,6 +23,15 @@ PhotoCleaner is an AI-powered photo cleaning assistant for Android that helps yo
 
 PhotoCleaner 是一款基于 AI 的 Android 照片清理助手，帮助您识别并删除设备上无用的、模糊的、重复的或低质量的照片。它使用设备端 AI 分类技术对照片进行分类，并提供直观的审查界面以便快速清理。
 
+## 📢 Recent Updates (v1.5.0)
+
+- **Security Enhancements**: Moved OpenAI API Key storage to `EncryptedSharedPreferences`.
+- **Performance**: Removed `runBlocking` calls from network interceptors to prevent ANR. Replaced heavy `getPixel()` image analysis with highly optimized `getPixels()` array operations.
+- **Smart Scanning**: Introduced an incremental scan algorithm that protects existing AI analysis results and drastically speeds up rescan times. 
+- **Navigation Safety**: Upgraded to Navigation Compose 2.9.0 with fully type-safe routes (`@Serializable`).
+- **Stability Fixes**: Fixed `InputStream` leak in AI service and ensured correct serialization for API responses (`MessageContent`).
+- **Safe Recovery**: Completely overhauled the trash recovery system to correctly restore photos to MediaStore instead of just the internal database.
+
 ## ✨ Features / 功能特性
 
 - **🤖 AI Photo Classification** - Automatically classifies photos as useful, useless, or uncertain

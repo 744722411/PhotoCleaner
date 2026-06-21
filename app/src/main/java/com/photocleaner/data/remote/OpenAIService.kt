@@ -71,13 +71,13 @@ class OpenAIService @Inject constructor(
                 messages = listOf(
                     Message(
                         role = "user",
-                        content = listOf(
+                        content = MessageContent.ImageListContent(listOf(
                             ImageContent(type = "text", text = prompt),
                             ImageContent(
                                 type = "image_url",
                                 imageUrl = ImageUrl(url = "data:image/jpeg;base64,$base64", detail = "low")
                             )
-                        )
+                        ))
                     )
                 )
             )
@@ -109,7 +109,7 @@ class OpenAIService @Inject constructor(
             val request = OpenAIRequest(
                 model = model,
                 messages = listOf(
-                    Message(role = "user", content = "hello")
+                    Message(role = "user", content = MessageContent.TextContent("hello"))
                 ),
                 maxTokens = 10
             )
@@ -120,9 +120,9 @@ class OpenAIService @Inject constructor(
         }
 
     private fun encodeImageToBase64(uri: Uri): String {
-        val inputStream = context.contentResolver.openInputStream(uri)
-        val bitmap = BitmapFactory.decodeStream(inputStream)
-        inputStream?.close()
+        val bitmap = context.contentResolver.openInputStream(uri)?.use { inputStream ->
+            BitmapFactory.decodeStream(inputStream)
+        }
 
         if (bitmap == null) return ""
 

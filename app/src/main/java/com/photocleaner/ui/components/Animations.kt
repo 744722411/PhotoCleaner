@@ -58,10 +58,29 @@ fun AnimatedCard(
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit
 ) {
-    // Simple card with rounded corners and shadow effect
+    var isPressed by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.95f else 1f,
+        animationSpec = tween(durationMillis = 150),
+        label = "scale"
+    )
+
     Box(
         modifier = modifier
+            .androidx.compose.ui.draw.scale(scale)
             .clip(RoundedCornerShape(16.dp))
+            .androidx.compose.ui.input.pointer.pointerInput(Unit) {
+                awaitPointerEventScope {
+                    while (true) {
+                        val event = awaitPointerEvent()
+                        when (event.type) {
+                            androidx.compose.ui.input.pointer.PointerEventType.Press -> isPressed = true
+                            androidx.compose.ui.input.pointer.PointerEventType.Release,
+                            androidx.compose.ui.input.pointer.PointerEventType.Exit -> isPressed = false
+                        }
+                    }
+                }
+            }
     ) {
         content()
     }
@@ -84,7 +103,9 @@ fun GradientText(
     androidx.compose.material3.Text(
         text = text,
         modifier = modifier,
-        style = androidx.compose.material3.MaterialTheme.typography.headlineLarge,
+        style = androidx.compose.material3.MaterialTheme.typography.headlineLarge.copy(
+            brush = gradient
+        ),
         fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
     )
 }
@@ -143,16 +164,3 @@ fun AnimatedCounter(
     )
 }
 
-/**
- * Glowing effect for important elements
- */
-@Composable
-fun GlowEffect(
-    color: Color = Color(0xFF58A6FF),
-    content: @Composable () -> Unit
-) {
-    Box {
-        content()
-        // Glow effect would be implemented with shadow or custom drawing
-    }
-}

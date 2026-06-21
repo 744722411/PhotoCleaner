@@ -12,21 +12,28 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.navigation.NavDestination.Companion.hierarchy
+import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import kotlinx.serialization.Serializable
 import com.photocleaner.ui.home.HomeScreen
 import com.photocleaner.ui.scan.ScanScreen
 import com.photocleaner.ui.review.ReviewScreen
 import com.photocleaner.ui.stats.StatsScreen
 
-sealed class Screen(val route: String, val title: String, val icon: ImageVector) {
-    data object Home : Screen("home", "\u9996\u9875", Icons.Default.Home)
-    data object Scan : Screen("scan", "\u626b\u63cf", Icons.Default.CameraAlt)
-    data object Review : Screen("review", "\u5ba1\u67e5", Icons.Default.Preview)
-    data object Stats : Screen("stats", "\u7edf\u8ba1", Icons.Default.BarChart)
+@Serializable data object HomeRoute
+@Serializable data object ScanRoute
+@Serializable data object ReviewRoute
+@Serializable data object StatsRoute
+
+sealed class Screen(val route: Any, val title: String, val icon: ImageVector) {
+    data object Home : Screen(HomeRoute, "\u9996\u9875", Icons.Default.Home)
+    data object Scan : Screen(ScanRoute, "\u626b\u63cf", Icons.Default.CameraAlt)
+    data object Review : Screen(ReviewRoute, "\u5ba1\u67e5", Icons.Default.Preview)
+    data object Stats : Screen(StatsRoute, "\u7edf\u8ba1", Icons.Default.BarChart)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -47,7 +54,7 @@ fun NavGraph() {
                     NavigationBarItem(
                         icon = { Icon(screen.icon, contentDescription = screen.title) },
                         label = { Text(screen.title) },
-                        selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true,
+                        selected = currentDestination?.hierarchy?.any { it.hasRoute(screen.route::class) } == true,
                         onClick = {
                             navController.navigate(screen.route) {
                                 popUpTo(navController.graph.findStartDestination().id) {
@@ -64,19 +71,19 @@ fun NavGraph() {
     ) { innerPadding ->
         NavHost(
             navController = navController,
-            startDestination = Screen.Home.route,
+            startDestination = HomeRoute,
             modifier = Modifier.padding(innerPadding)
         ) {
-            composable(Screen.Home.route) {
+            composable<HomeRoute> {
                 HomeScreen(
-                    onNavigateToScan = { navController.navigate(Screen.Scan.route) },
-                    onNavigateToReview = { navController.navigate(Screen.Review.route) },
-                    onNavigateToStats = { navController.navigate(Screen.Stats.route) }
+                    onNavigateToScan = { navController.navigate(ScanRoute) },
+                    onNavigateToReview = { navController.navigate(ReviewRoute) },
+                    onNavigateToStats = { navController.navigate(StatsRoute) }
                 )
             }
-            composable(Screen.Scan.route) { ScanScreen() }
-            composable(Screen.Review.route) { ReviewScreen() }
-            composable(Screen.Stats.route) { StatsScreen() }
+            composable<ScanRoute> { ScanScreen() }
+            composable<ReviewRoute> { ReviewScreen() }
+            composable<StatsRoute> { StatsScreen() }
         }
     }
 }

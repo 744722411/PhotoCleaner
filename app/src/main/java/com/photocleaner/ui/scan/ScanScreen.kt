@@ -29,7 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.photocleaner.data.repository.DirectoryInfo
+import com.photocleaner.domain.model.DirectoryInfo
 import com.photocleaner.ui.components.*
 import com.photocleaner.ui.theme.*
 

@@ -42,6 +42,12 @@ interface PhotoDao {
     @Query("DELETE FROM photos")
     suspend fun clearAll()
 
+    @Query("DELETE FROM photos WHERE id IN (:ids)")
+    suspend fun deleteByIds(ids: List<Long>)
+
+    @Query("SELECT id FROM photos")
+    suspend fun getAllPhotoIds(): List<Long>
+
     @Query("SELECT * FROM photos WHERE isInTrash = 1")
     suspend fun getTrashedPhotos(): List<PhotoEntity>
 }

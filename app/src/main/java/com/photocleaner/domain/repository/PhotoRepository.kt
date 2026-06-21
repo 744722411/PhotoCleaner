@@ -1,6 +1,6 @@
 package com.photocleaner.domain.repository
 
-import com.photocleaner.data.repository.DirectoryInfo
+import com.photocleaner.domain.model.DirectoryInfo
 import com.photocleaner.domain.model.Classification
 import com.photocleaner.domain.model.Photo
 import kotlinx.coroutines.flow.Flow
@@ -20,6 +20,8 @@ interface PhotoRepository {
     suspend fun deletePhotos(photos: List<Photo>)
     suspend fun restorePhotos(photos: List<Photo>)
     suspend fun getPhotoById(id: Long): Photo?
+    suspend fun getAllPhotoIds(): List<Long>
+    suspend fun deletePhotosByIds(ids: List<Long>)
     suspend fun insertPhotos(photos: List<Photo>)
     suspend fun clearAll()
     suspend fun detectLocalIssues(photo: Photo): Photo

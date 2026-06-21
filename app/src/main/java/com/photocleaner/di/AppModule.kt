@@ -18,6 +18,13 @@ import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
 import java.util.concurrent.TimeUnit
 import javax.inject.Singleton
+import com.squareup.moshi.FromJson
+import com.squareup.moshi.ToJson
+import com.squareup.moshi.JsonReader
+import com.squareup.moshi.JsonWriter
+import com.squareup.moshi.Types
+import com.photocleaner.data.remote.dto.MessageContent
+import com.photocleaner.data.remote.dto.ImageContent
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -26,6 +33,7 @@ object AppModule {
     @Provides
     @Singleton
     fun provideMoshi(): Moshi = Moshi.Builder()
+        .add(MessageContentAdapter())
         .build()
 
     @Provides
@@ -37,14 +45,14 @@ object AppModule {
         .addInterceptor(
             HttpLoggingInterceptor().apply {
                 level = if (com.photocleaner.BuildConfig.DEBUG) {
-                    HttpLoggingInterceptor.Level.BASIC
+                    HttpLoggingInterceptor.Level.BODY
                 } else {
                     HttpLoggingInterceptor.Level.NONE
                 }
             }
         )
         .addInterceptor { chain ->
-            val currentBaseUrl = runBlocking { settingsRepository.getBaseUrlSync() }
+            val currentBaseUrl = settingsRepository.getBaseUrlSyncMemory()
             val normalizedUrl = if (currentBaseUrl.endsWith("/")) currentBaseUrl else "$currentBaseUrl/"
             val baseUri = java.net.URI(normalizedUrl)
             val original = chain.request()
@@ -59,7 +67,7 @@ object AppModule {
             chain.proceed(newRequest)
         }
         .addInterceptor { chain ->
-            val apiKey = runBlocking { settingsRepository.getApiKeySync() }
+            val apiKey = settingsRepository.getApiKeySyncMemory()
             val request = chain.request().newBuilder()
                 .header("Authorization", "Bearer $apiKey")
                 .build()
@@ -89,4 +97,45 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindPhotoRepository(impl: PhotoRepositoryImpl): PhotoRepository
+}
+
+class MessageContentAdapter {
+    @FromJson
+    fun fromJson(
+        reader: JsonReader,
+        moshi: Moshi
+    ): MessageContent? {
+        return when (reader.peek()) {
+            JsonReader.Token.STRING -> {
+                MessageContent.TextContent(reader.nextString())
+            }
+            JsonReader.Token.BEGIN_ARRAY -> {
+                val listType = Types.newParameterizedType(List::class.java, ImageContent::class.java)
+                val adapter = moshi.adapter<List<ImageContent>>(listType)
+                val list = adapter.fromJson(reader) ?: emptyList()
+                MessageContent.ImageListContent(list)
+            }
+            else -> {
+                reader.skipValue()
+                null
+            }
+        }
+    }
+
+    @ToJson
+    fun toJson(
+        writer: JsonWriter,
+        value: MessageContent?,
+        moshi: Moshi
+    ) {
+        when (value) {
+            is MessageContent.TextContent -> writer.value(value.text)
+            is MessageContent.ImageListContent -> {
+                val listType = Types.newParameterizedType(List::class.java, ImageContent::class.java)
+                val adapter = moshi.adapter<List<ImageContent>>(listType)
+                adapter.toJson(writer, value.images)
+            }
+            null -> writer.nullValue()
+        }
+    }
 }

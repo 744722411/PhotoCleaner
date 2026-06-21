@@ -8,7 +8,7 @@ import android.os.Environment
 import android.provider.MediaStore
 import com.photocleaner.data.local.PhotoDao
 import com.photocleaner.data.local.entity.PhotoEntity
-import com.photocleaner.data.repository.DirectoryInfo
+import com.photocleaner.domain.model.DirectoryInfo
 import com.photocleaner.data.remote.OpenAIService
 import com.photocleaner.domain.model.Classification
 import com.photocleaner.domain.model.Photo
@@ -111,7 +111,8 @@ class PhotoRepositoryImpl @Inject constructor(
                         height = cursor.getInt(heightCol),
                         size = cursor.getLong(sizeCol),
                         dateAdded = cursor.getLong(dateAddedCol),
-                        dateModified = cursor.getLong(dateModCol)
+                        dateModified = cursor.getLong(dateModCol),
+                        filePath = cursor.getString(dataCol) ?: ""
                     )
                 )
             }
@@ -258,7 +259,9 @@ class PhotoRepositoryImpl @Inject constructor(
                     context.contentResolver.delete(uri, null, null)
                     ids.add(photo.id)
                 }
-            } catch (_: Exception) { }
+            } catch (e: Exception) {
+                android.util.Log.e("PhotoRepositoryImpl", "Failed to delete photo: ${photo.displayName}", e)
+            }
         }
 
         if (ids.isNotEmpty()) {
@@ -274,10 +277,18 @@ class PhotoRepositoryImpl @Inject constructor(
             try {
                 val trashFile = File(trashDir, "${photo.id}_${photo.displayName}")
                 if (trashFile.exists()) {
+                    if (photo.filePath.isNotBlank()) {
+                        val originalFile = File(photo.filePath)
+                        originalFile.parentFile?.mkdirs()
+                        trashFile.copyTo(originalFile, overwrite = true)
+                        android.media.MediaScannerConnection.scanFile(context, arrayOf(photo.filePath), null, null)
+                    }
                     ids.add(photo.id)
                     trashFile.delete()
                 }
-            } catch (_: Exception) { }
+            } catch (e: Exception) {
+                android.util.Log.e("PhotoRepositoryImpl", "Failed to restore photo: ${photo.displayName}", e)
+            }
         }
 
         if (ids.isNotEmpty()) {
@@ -287,6 +298,13 @@ class PhotoRepositoryImpl @Inject constructor(
 
     override suspend fun getPhotoById(id: Long): Photo? =
         photoDao.getPhotoById(id)?.toDomain()
+
+    override suspend fun getAllPhotoIds(): List<Long> =
+        photoDao.getAllPhotoIds()
+
+    override suspend fun deletePhotosByIds(ids: List<Long>) {
+        photoDao.deleteByIds(ids)
+    }
 
     override suspend fun insertPhotos(photos: List<Photo>) {
         photoDao.insertPhotos(photos.map { it.toEntity() })
@@ -370,7 +388,7 @@ class PhotoRepositoryImpl @Inject constructor(
     private fun PhotoEntity.toDomain() = Photo(
         id = id, uri = uri, displayName = displayName, mimeType = mimeType,
         width = width, height = height, size = size, dateAdded = dateAdded,
-        dateModified = dateModified,
+        dateModified = dateModified, filePath = filePath,
         classification = try { Classification.valueOf(classification) } catch (_: Exception) { Classification.UNKNOWN },
         confidence = confidence, category = category,
         isLocalUseless = isLocalUseless, localReason = localReason, isInTrash = isInTrash
@@ -379,7 +397,7 @@ class PhotoRepositoryImpl @Inject constructor(
     private fun Photo.toEntity() = PhotoEntity(
         id = id, uri = uri, displayName = displayName, mimeType = mimeType,
         width = width, height = height, size = size, dateAdded = dateAdded,
-        dateModified = dateModified, classification = classification.name,
+        dateModified = dateModified, filePath = filePath, classification = classification.name,
         confidence = confidence, category = category,
         isLocalUseless = isLocalUseless, localReason = localReason, isInTrash = isInTrash
     )

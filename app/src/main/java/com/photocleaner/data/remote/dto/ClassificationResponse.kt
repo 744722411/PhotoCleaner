@@ -13,8 +13,13 @@ data class OpenAIRequest(
 @JsonClass(generateAdapter = true)
 data class Message(
     @Json(name = "role") val role: String,
-    @Json(name = "content") val content: Any
+    @Json(name = "content") val content: MessageContent
 )
+
+sealed class MessageContent {
+    data class TextContent(val text: String) : MessageContent()
+    data class ImageListContent(val images: List<ImageContent>) : MessageContent()
+}
 
 @JsonClass(generateAdapter = true)
 data class ImageContent(

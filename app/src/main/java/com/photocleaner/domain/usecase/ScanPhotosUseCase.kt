@@ -27,21 +27,34 @@ class ScanPhotosUseCase @Inject constructor(
         onProgress: (scanned: Int, total: Int) -> Unit = { _, _ -> },
         onLog: (ScanLog) -> Unit = {}
     ): List<Photo> = withContext(Dispatchers.IO) {
-        onLog(ScanLog("", ScanLogStatus.INFO, "正在清除旧数据..."))
-        repository.clearAll()
+        onLog(ScanLog("", ScanLogStatus.INFO, "正在扫描相册..."))
+        val existingPhotoIds = repository.getAllPhotoIds().toSet()
         val photos = if (selectedDirectories.isNotEmpty()) {
             repository.scanPhotos(selectedDirectories)
         } else {
             repository.scanPhotos()
         }
-        val limited = if (batchSize > 0 && photos.size > batchSize) {
-            onLog(ScanLog("", ScanLogStatus.INFO, "共找到 ${photos.size} 张照片，本次处理前 $batchSize 张"))
-            photos.take(batchSize)
+        val scannedIds = photos.map { it.id }.toSet()
+        val toDelete = existingPhotoIds - scannedIds
+        if (toDelete.isNotEmpty()) {
+            onLog(ScanLog("", ScanLogStatus.INFO, "清理 ${toDelete.size} 张已删除照片的记录..."))
+            repository.deletePhotosByIds(toDelete.toList())
+        }
+
+        val newPhotos = photos.filter { it.id !in existingPhotoIds }
+        
+        val limited = if (batchSize > 0 && newPhotos.size > batchSize) {
+            onLog(ScanLog("", ScanLogStatus.INFO, "共发现 ${newPhotos.size} 张新照片，本次处理前 $batchSize 张"))
+            newPhotos.take(batchSize)
         } else {
-            photos
+            newPhotos
         }
         val total = limited.size
-        onLog(ScanLog("", ScanLogStatus.INFO, "找到 $total 张照片，开始本地检测..."))
+        if (total == 0) {
+            onLog(ScanLog("", ScanLogStatus.INFO, "没有发现新照片，扫描完成！"))
+            return@withContext emptyList()
+        }
+        onLog(ScanLog("", ScanLogStatus.INFO, "发现 $total 张新照片，开始本地检测..."))
 
         val results = mutableListOf<Photo>()
 

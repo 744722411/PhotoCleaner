@@ -26,7 +26,8 @@ class ScanStateHolder @Inject constructor() {
 
     fun addLog(entry: ScanLogEntry) {
         _uiState.update { state ->
-            state.copy(scanLogs = state.scanLogs + entry)
+            val newLogs = state.scanLogs + entry
+            state.copy(scanLogs = if (newLogs.size > 1000) newLogs.takeLast(1000) else newLogs)
         }
     }
 
