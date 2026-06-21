@@ -8,9 +8,9 @@ enum class Classification {
 
     val displayName: String
         get() = when (this) {
-            USELESS -> "无用"
-            KEEP -> "保留"
-            UNCERTAIN -> "待定"
+            USELESS -> "建议清理"
+            KEEP -> "建议保留"
+            UNCERTAIN -> "需人工审查"
             UNKNOWN -> "未分类"
         }
 

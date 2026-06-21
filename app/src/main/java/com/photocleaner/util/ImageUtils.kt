@@ -56,4 +56,49 @@ object ImageUtils {
             else -> String.format("%.2fGB", bytes / (1024.0 * 1024.0 * 1024.0))
         }
     }
+
+    /**
+     * Computes the difference hash (dHash) of a bitmap for perceptual duplicate detection.
+     * Returns a 64-bit Long.
+     */
+    fun computeDHash(bitmap: Bitmap): Long {
+        var hash = 0L
+        try {
+            // Resize to 9x8 for dHash
+            val scaledBitmap = Bitmap.createScaledBitmap(bitmap, 9, 8, true)
+            val pixels = IntArray(72)
+            scaledBitmap.getPixels(pixels, 0, 9, 0, 0, 9, 8)
+
+            for (y in 0 until 8) {
+                for (x in 0 until 8) {
+                    val p1 = pixels[y * 9 + x]
+                    val p2 = pixels[y * 9 + x + 1]
+
+                    // Calculate grayscale brightness
+                    val b1 = (Color.red(p1) * 299 + Color.green(p1) * 587 + Color.blue(p1) * 114) / 1000
+                    val b2 = (Color.red(p2) * 299 + Color.green(p2) * 587 + Color.blue(p2) * 114) / 1000
+
+                    hash = hash shl 1
+                    if (b1 > b2) {
+                        hash = hash or 1L
+                    }
+                }
+            }
+            if (scaledBitmap != bitmap) {
+                scaledBitmap.recycle()
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        return hash
+    }
+
+    /**
+     * Calculates the Hamming distance between two dHashes.
+     * Distance <= 5 usually means the images are visually identical.
+     */
+    fun hammingDistance(hash1: Long, hash2: Long): Int {
+        val xor = hash1 xor hash2
+        return java.lang.Long.bitCount(xor)
+    }
 }

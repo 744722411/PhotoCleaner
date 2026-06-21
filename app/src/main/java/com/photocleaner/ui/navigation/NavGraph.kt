@@ -6,6 +6,7 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Preview
 import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -23,24 +24,27 @@ import com.photocleaner.ui.home.HomeScreen
 import com.photocleaner.ui.scan.ScanScreen
 import com.photocleaner.ui.review.ReviewScreen
 import com.photocleaner.ui.stats.StatsScreen
+import com.photocleaner.ui.settings.SettingsScreen
 
 @Serializable data object HomeRoute
 @Serializable data object ScanRoute
 @Serializable data object ReviewRoute
 @Serializable data object StatsRoute
+@Serializable data object SettingsRoute
 
 sealed class Screen(val route: Any, val title: String, val icon: ImageVector) {
     data object Home : Screen(HomeRoute, "\u9996\u9875", Icons.Default.Home)
     data object Scan : Screen(ScanRoute, "\u626b\u63cf", Icons.Default.CameraAlt)
     data object Review : Screen(ReviewRoute, "\u5ba1\u67e5", Icons.Default.Preview)
     data object Stats : Screen(StatsRoute, "\u7edf\u8ba1", Icons.Default.BarChart)
+    data object Settings : Screen(SettingsRoute, "\u8bbe\u7f6e", Icons.Default.Settings)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NavGraph() {
     val navController = rememberNavController()
-    val screens = listOf(Screen.Home, Screen.Scan, Screen.Review, Screen.Stats)
+    val screens = listOf(Screen.Home, Screen.Scan, Screen.Review, Screen.Stats, Screen.Settings)
 
     Scaffold(
         bottomBar = {
@@ -78,12 +82,14 @@ fun NavGraph() {
                 HomeScreen(
                     onNavigateToScan = { navController.navigate(ScanRoute) },
                     onNavigateToReview = { navController.navigate(ReviewRoute) },
-                    onNavigateToStats = { navController.navigate(StatsRoute) }
+                    onNavigateToStats = { navController.navigate(StatsRoute) },
+                    onNavigateToSettings = { navController.navigate(SettingsRoute) }
                 )
             }
             composable<ScanRoute> { ScanScreen() }
             composable<ReviewRoute> { ReviewScreen() }
             composable<StatsRoute> { StatsScreen() }
+            composable<SettingsRoute> { SettingsScreen() }
         }
     }
 }

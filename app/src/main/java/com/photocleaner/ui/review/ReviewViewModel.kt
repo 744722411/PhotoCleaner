@@ -6,20 +6,29 @@ import com.photocleaner.domain.model.Classification
 import com.photocleaner.domain.model.Photo
 import com.photocleaner.domain.repository.PhotoRepository
 import com.photocleaner.domain.usecase.DeletePhotosUseCase
+import com.photocleaner.util.ImageUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import kotlin.math.abs
 
 enum class FilterType(val displayName: String) {
-    ALL("\u5168\u90e8"),
-    USELESS("\u65e0\u7528"),
-    UNCERTAIN("\u5f85\u5b9a"),
-    KEEP("\u4fdd\u7559")
+    ALL("全部"),
+    SIMILAR("相似"),
+    USELESS("建议清理"),
+    UNCERTAIN("人工审查"),
+    KEEP("保留")
+}
+
+sealed class ReviewEvent {
+    data class LaunchTrashIntent(val pendingIntent: android.app.PendingIntent) : ReviewEvent()
 }
 
 data class ReviewUiState(
     val photos: List<Photo> = emptyList(),
+    val similarGroups: List<List<Photo>> = emptyList(),
     val selectedPhotos: Set<Long> = emptySet(),
     val filter: FilterType = FilterType.ALL,
     val isBatchMode: Boolean = false,
@@ -40,6 +49,12 @@ class ReviewViewModel @Inject constructor(
     val uiState: StateFlow<ReviewUiState> = _uiState.asStateFlow()
 
     private val _filter = MutableStateFlow(FilterType.ALL)
+    
+    private val _event = MutableSharedFlow<ReviewEvent>()
+    val event = _event.asSharedFlow()
+
+    private val pendingDeletePhotosList = mutableListOf<Photo>()
+    private var deleteJob: Job? = null
 
     init {
         loadPhotos()
@@ -49,22 +64,72 @@ class ReviewViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
 
-            // Combine photos and filter into a single reactive stream
             combine(
                 repository.getAllPhotos(),
                 _filter
             ) { photos, filter ->
                 val filtered = when (filter) {
                     FilterType.ALL -> photos
+                    FilterType.SIMILAR -> photos
                     FilterType.USELESS -> photos.filter { it.classification == Classification.USELESS }
                     FilterType.UNCERTAIN -> photos.filter { it.classification == Classification.UNCERTAIN }
                     FilterType.KEEP -> photos.filter { it.classification == Classification.KEEP }
                 }
-                filtered
-            }.collect { filtered ->
-                _uiState.update { it.copy(photos = filtered, isLoading = false) }
+                
+                val similarGroups = if (filter == FilterType.SIMILAR) {
+                    groupSimilarPhotos(photos)
+                } else {
+                    emptyList()
+                }
+
+                Pair(filtered, similarGroups)
+            }.collect { (filtered, similarGroups) ->
+                _uiState.update { state ->
+                    state.copy(
+                        photos = filtered,
+                        similarGroups = similarGroups,
+                        isLoading = false
+                    )
+                }
             }
         }
+    }
+
+    private suspend fun groupSimilarPhotos(photos: List<Photo>): List<List<Photo>> = kotlinx.coroutines.withContext(Dispatchers.Default) {
+        val activePhotos = photos.filter { !it.isInTrash && it.dHash != 0L }
+        if (activePhotos.isEmpty()) return@withContext emptyList()
+
+        val groups = mutableListOf<MutableList<Photo>>()
+        val visited = mutableSetOf<Long>()
+        val sorted = activePhotos.sortedByDescending { it.dateAdded }
+
+        for (i in sorted.indices) {
+            val p1 = sorted[i]
+            if (p1.id in visited) continue
+
+            val currentGroup = mutableListOf<Photo>()
+            currentGroup.add(p1)
+            visited.add(p1.id)
+
+            for (j in i + 1 until sorted.size) {
+                val p2 = sorted[j]
+                if (p2.id in visited) continue
+
+                val timeDiff = abs(p1.dateAdded - p2.dateAdded)
+                val distance = ImageUtils.hammingDistance(p1.dHash, p2.dHash)
+
+                // 10 minutes (600s) and Hamming distance <= 5
+                if (timeDiff <= 600 && distance <= 5) {
+                    currentGroup.add(p2)
+                    visited.add(p2.id)
+                }
+            }
+
+            if (currentGroup.size > 1) {
+                groups.add(currentGroup)
+            }
+        }
+        groups
     }
 
     fun setFilter(filter: FilterType) {
@@ -110,33 +175,116 @@ class ReviewViewModel @Inject constructor(
         deletePhotos(listOf(photo))
     }
 
+    fun keepBestInGroup(group: List<Photo>) {
+        if (group.size <= 1) return
+        val bestPhoto = group.minWithOrNull { p1, p2 ->
+            val p1Blur = p1.localReason.contains("模糊")
+            val p2Blur = p2.localReason.contains("模糊")
+            if (p1Blur != p2Blur) {
+                return@minWithOrNull if (p1Blur) 1 else -1
+            }
+
+            val p1Area = p1.width * p1.height
+            val p2Area = p2.width * p2.height
+            if (p1Area != p2Area) {
+                return@minWithOrNull p2Area.compareTo(p1Area)
+            }
+
+            if (p1.size != p2.size) {
+                return@minWithOrNull p2.size.compareTo(p1.size)
+            }
+
+            p1.dateAdded.compareTo(p2.dateAdded)
+        } ?: group.first()
+
+        val toDelete = group.filter { it.id != bestPhoto.id }
+        deletePhotos(toDelete)
+    }
+
     private fun deletePhotos(photos: List<Photo>) {
+        deleteJob?.cancel()
+        pendingDeletePhotosList.addAll(photos)
+
         viewModelScope.launch {
             try {
+                // Logically delete in Room (isInTrash = true)
                 deletePhotosUseCase(photos)
-                _uiState.update { state ->
-                    state.copy(
-                        deletedCount = state.deletedCount + photos.size,
-                        showUndo = true,
-                        lastDeletedPhotos = photos
-                    )
-                }
-                // Auto-hide undo after 5 seconds
-                kotlinx.coroutines.delay(5000)
-                _uiState.update { it.copy(showUndo = false) }
-            } catch (_: Exception) { }
+            } catch (_: Exception) {}
+        }
+
+        _uiState.update { state ->
+            state.copy(
+                deletedCount = state.deletedCount + photos.size,
+                showUndo = true,
+                lastDeletedPhotos = pendingDeletePhotosList.toList()
+            )
+        }
+
+        deleteJob = viewModelScope.launch {
+            kotlinx.coroutines.delay(5000)
+            _uiState.update { it.copy(showUndo = false) }
+            commitPendingDeletes()
         }
     }
 
     fun undoDelete() {
+        deleteJob?.cancel()
         val photos = _uiState.value.lastDeletedPhotos
         if (photos.isEmpty()) return
 
         viewModelScope.launch {
             try {
+                // Restore logic state in Room (isInTrash = false)
                 deletePhotosUseCase.restore(photos)
-                _uiState.update { it.copy(showUndo = false, lastDeletedPhotos = emptyList()) }
-            } catch (_: Exception) { }
+                pendingDeletePhotosList.clear()
+                _uiState.update { state ->
+                    state.copy(
+                        showUndo = false,
+                        lastDeletedPhotos = emptyList(),
+                        deletedCount = maxOf(0, state.deletedCount - photos.size)
+                    )
+                }
+            } catch (_: Exception) {}
+        }
+    }
+
+    fun commitPendingDeletes() {
+        deleteJob?.cancel()
+        val photos = pendingDeletePhotosList.toList()
+        if (photos.isEmpty()) return
+
+        viewModelScope.launch {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+                val pendingIntent = repository.createTrashPendingIntent(photos)
+                if (pendingIntent != null) {
+                    _event.emit(ReviewEvent.LaunchTrashIntent(pendingIntent))
+                } else {
+                    pendingDeletePhotosList.clear()
+                }
+            } else {
+                pendingDeletePhotosList.clear()
+            }
+        }
+    }
+
+    fun onTrashConfirmed() {
+        pendingDeletePhotosList.clear()
+        _uiState.update { it.copy(lastDeletedPhotos = emptyList()) }
+    }
+
+    fun onTrashCanceled() {
+        val photos = pendingDeletePhotosList.toList()
+        pendingDeletePhotosList.clear()
+        viewModelScope.launch {
+            try {
+                deletePhotosUseCase.restore(photos)
+            } catch (_: Exception) {}
+            _uiState.update { state ->
+                state.copy(
+                    lastDeletedPhotos = emptyList(),
+                    deletedCount = maxOf(0, state.deletedCount - photos.size)
+                )
+            }
         }
     }
 

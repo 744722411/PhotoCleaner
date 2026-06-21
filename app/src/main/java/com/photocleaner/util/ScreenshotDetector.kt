@@ -49,14 +49,12 @@ object ScreenshotDetector {
 
         // Check for no EXIF camera data (screenshots typically lack camera EXIF)
         val hasNoCameraExif = try {
-            val inputStream = context.contentResolver.openInputStream(uri)
-            if (inputStream != null) {
+            context.contentResolver.openInputStream(uri)?.use { inputStream ->
                 val exif = ExifInterface(inputStream)
                 val make = exif.getAttribute(ExifInterface.TAG_MAKE)
                 val model = exif.getAttribute(ExifInterface.TAG_MODEL)
-                inputStream.close()
                 make.isNullOrEmpty() && model.isNullOrEmpty()
-            } else false
+            } ?: false
         } catch (_: Exception) {
             true
         }

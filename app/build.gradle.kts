@@ -1,9 +1,9 @@
 plugins {
-    id("com.android.application")
-    id("org.jetbrains.kotlin.plugin.compose") version "2.1.0"
-    id("com.google.dagger.hilt.android")
-    id("com.google.devtools.ksp")
-    id("org.jetbrains.kotlin.plugin.serialization") version "2.1.0"
+    alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.hilt.android)
+    alias(libs.plugins.ksp)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 android {
@@ -14,8 +14,8 @@ android {
         applicationId = "com.photocleaner"
         minSdk = 26
         targetSdk = 36
-        versionCode = 14
-        versionName = "1.5.0"
+        versionCode = 15
+        versionName = "1.6.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -40,61 +40,66 @@ android {
 
 dependencies {
     // Compose BOM - Latest
-    val composeBom = platform("androidx.compose:compose-bom:2026.06.00")
-    implementation(composeBom)
-    implementation("androidx.compose.ui:ui")
-    implementation("androidx.compose.ui:ui-graphics")
-    implementation("androidx.compose.ui:ui-tooling-preview")
-    implementation("androidx.compose.material3:material3")
-    implementation("androidx.compose.material:material-icons-extended")
-    implementation("androidx.compose.animation:animation")
-    debugImplementation("androidx.compose.ui:ui-tooling")
+    implementation(platform(libs.androidx.compose.bom))
+    implementation(libs.androidx.compose.ui)
+    implementation(libs.androidx.compose.ui.graphics)
+    implementation(libs.androidx.compose.ui.tooling.preview)
+    implementation(libs.androidx.compose.material3)
+    implementation(libs.androidx.compose.material.icons.extended)
+    implementation(libs.androidx.compose.animation)
+    debugImplementation(libs.androidx.compose.ui.tooling)
 
     // Core - Latest
-    implementation("androidx.core:core-ktx:1.16.0")
-    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.9.1")
-    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.9.1")
-    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.9.1")
-    implementation("androidx.activity:activity-compose:1.10.1")
+    implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
+    implementation(libs.androidx.lifecycle.runtime.compose)
+    implementation(libs.androidx.activity.compose)
 
     // Navigation - Latest
-    implementation("androidx.navigation:navigation-compose:2.9.0")
-    implementation("androidx.hilt:hilt-navigation-compose:1.3.0")
+    implementation(libs.androidx.navigation.compose)
+    implementation(libs.androidx.hilt.navigation.compose)
 
-    // Hilt - Latest (2.59.2)
-    implementation("com.google.dagger:hilt-android:2.59.2")
-    ksp("com.google.dagger:hilt-android-compiler:2.59.2")
+    // Hilt - Latest
+    implementation(libs.hilt.android)
+    ksp(libs.hilt.compiler)
 
     // Room - Latest
-    implementation("androidx.room:room-runtime:2.8.4")
-    implementation("androidx.room:room-ktx:2.8.4")
-    ksp("androidx.room:room-compiler:2.8.4")
+    implementation(libs.room.runtime)
+    implementation(libs.room.ktx)
+    ksp(libs.room.compiler)
 
     // Retrofit + OkHttp + Moshi - Latest
-    implementation("com.squareup.retrofit2:retrofit:2.11.0")
-    implementation("com.squareup.retrofit2:converter-moshi:2.11.0")
-    implementation("com.squareup.okhttp3:okhttp:4.12.0")
-    implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
-    implementation("com.squareup.moshi:moshi:1.15.1")
-    ksp("com.squareup.moshi:moshi-kotlin-codegen:1.15.1")
+    implementation(libs.retrofit)
+    implementation(libs.retrofit.converter.moshi)
+    implementation(libs.okhttp)
+    implementation(libs.okhttp.logging)
+    implementation(libs.moshi)
+    ksp(libs.moshi.kotlin.codegen)
 
-    // Coil 3 - Latest (3.5.0)
-    implementation("io.coil-kt.coil3:coil-compose:3.5.0")
-    implementation("io.coil-kt.coil3:coil-network-okhttp:3.5.0")
+    // Coil 3 - Latest
+    implementation(libs.coil.compose)
+    implementation(libs.coil.network.okhttp)
 
     // ExifInterface - Latest
-    implementation("androidx.exifinterface:exifinterface:1.4.1")
+    implementation(libs.androidx.exifinterface)
 
     // Coroutines - Latest
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
+    implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.kotlinx.serialization.json)
 
     // DataStore Preferences - Latest
-    implementation("androidx.datastore:datastore-preferences:1.1.7")
-    
+    implementation(libs.androidx.datastore.preferences)
+
     // Security Crypto
-    implementation("androidx.security:security-crypto:1.1.0-alpha06")
+    implementation(libs.androidx.security.crypto)
+    
+    // ML Kit Image Labeling
+    implementation(libs.mlkit.image.labeling)
+    implementation(libs.kotlinx.coroutines.play.services)
 
     // Baseline Profiles
-    implementation("androidx.profileinstaller:profileinstaller:1.4.1")
+    implementation(libs.androidx.profileinstaller)
+
+    testImplementation(libs.junit)
 }

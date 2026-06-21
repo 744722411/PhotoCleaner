@@ -1,8 +1,11 @@
 package com.photocleaner.ui.home
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
@@ -16,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -30,53 +34,68 @@ fun HomeScreen(
     onNavigateToScan: () -> Unit = {},
     onNavigateToReview: () -> Unit = {},
     onNavigateToStats: () -> Unit = {},
+    onNavigateToSettings: () -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    var showApiKeyDialog by remember { mutableStateOf(false) }
-    var apiKeyInput by remember { mutableStateOf("") }
-    var baseUrlInput by remember { mutableStateOf("") }
-    var modelInput by remember { mutableStateOf("") }
-
-    // Animated entrance
+    val context = LocalContext.current
     var isVisible by remember { mutableStateOf(false) }
+
     LaunchedEffect(Unit) {
         isVisible = true
+    }
+
+    // Android 14+ Partial Access Detection (READ_MEDIA_VISUAL_USER_SELECTED is granted, but READ_MEDIA_IMAGES is not)
+    val isPartialAccess = remember(context) {
+        android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE &&
+        androidx.core.content.ContextCompat.checkSelfPermission(
+            context, android.Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED &&
+        androidx.core.content.ContextCompat.checkSelfPermission(
+            context, android.Manifest.permission.READ_MEDIA_IMAGES
+        ) != android.content.pm.PackageManager.PERMISSION_GRANTED
+    }
+
+    // Permission Launcher for requesting incremental media access
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { _ ->
+        // Auto refresh stats via database updates
+    }
+
+    // Material You dynamic colors gradient background
+    val primaryColor = MaterialTheme.colorScheme.primary
+    val secondaryColor = MaterialTheme.colorScheme.secondaryContainer
+    val backgroundColor = MaterialTheme.colorScheme.background
+    val gradientColors = remember(primaryColor, secondaryColor, backgroundColor) {
+        listOf(
+            primaryColor.copy(alpha = 0.12f),
+            secondaryColor.copy(alpha = 0.08f),
+            backgroundColor
+        )
     }
 
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(GradientStart, GradientMid, GradientEnd)
-                )
-            ),
+            .background(Brush.verticalGradient(colors = gradientColors)),
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Hero Section with animated entrance
+        // Hero Section
         item {
             AnimatedVisibility(
                 visible = isVisible,
-                enter = slideInVertically(
-                    initialOffsetY = { -it },
-                    animationSpec = tween(durationMillis = 600)
-                ) + fadeIn(animationSpec = tween(durationMillis = 600))
+                enter = slideInVertically(initialOffsetY = { -it }) + fadeIn()
             ) {
                 Column {
                     Spacer(modifier = Modifier.height(8.dp))
                     
-                    // App icon with glow effect
                     Box(
                         modifier = Modifier
                             .size(64.dp)
                             .clip(CircleShape)
-                            .background(
-                                Brush.linearGradient(
-                                    colors = listOf(BlueAccent, Purple80)
-                                )
-                            ),
+                            .background(Brush.linearGradient(colors = listOf(BlueAccent, Purple80))),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
@@ -104,14 +123,77 @@ fun HomeScreen(
             }
         }
 
-        // Stats Overview with animated cards
+        // Android 14+ Partial access warning banner
+        if (isPartialAccess) {
+            item {
+                AnimatedVisibility(
+                    visible = isVisible,
+                    enter = slideInHorizontally(initialOffsetX = { -it }) + fadeIn(animationSpec = tween(600, delayMillis = 100))
+                ) {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                permissionLauncher.launch(
+                                    arrayOf(
+                                        android.Manifest.permission.READ_MEDIA_IMAGES,
+                                        android.Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED
+                                    )
+                                )
+                            },
+                        colors = CardDefaults.cardColors(containerColor = YellowAccent.copy(alpha = 0.15f)),
+                        shape = RoundedCornerShape(16.dp),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, YellowAccent.copy(alpha = 0.3f))
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .clip(CircleShape)
+                                    .background(YellowAccent.copy(alpha = 0.2f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Warning,
+                                    contentDescription = null,
+                                    tint = YellowAccent,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "已授权部分照片访问",
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 14.sp
+                                )
+                                Text(
+                                    text = "当前应用仅可读取授权范围内的照片。为找出所有相似或无用片，建议在此追加照片授权。",
+                                    color = Color.White.copy(alpha = 0.7f),
+                                    fontSize = 11.sp,
+                                    lineHeight = 15.sp
+                                )
+                            }
+                            Icon(
+                                imageVector = Icons.Default.ChevronRight,
+                                contentDescription = null,
+                                tint = Color.White.copy(alpha = 0.5f)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        // Stats Overview
         item {
             AnimatedVisibility(
                 visible = isVisible,
-                enter = slideInVertically(
-                    initialOffsetY = { it / 2 },
-                    animationSpec = tween(durationMillis = 600, delayMillis = 200)
-                ) + fadeIn(animationSpec = tween(durationMillis = 600, delayMillis = 200))
+                enter = slideInVertically(initialOffsetY = { it / 2 }) + fadeIn(animationSpec = tween(600, delayMillis = 200))
             ) {
                 GlassCard(
                     modifier = Modifier.fillMaxWidth()
@@ -171,14 +253,11 @@ fun HomeScreen(
             }
         }
 
-        // Quick Actions with gradient buttons
+        // Quick Actions
         item {
             AnimatedVisibility(
                 visible = isVisible,
-                enter = slideInVertically(
-                    initialOffsetY = { it / 2 },
-                    animationSpec = tween(durationMillis = 600, delayMillis = 400)
-                ) + fadeIn(animationSpec = tween(durationMillis = 600, delayMillis = 400))
+                enter = slideInVertically(initialOffsetY = { it / 2 }) + fadeIn(animationSpec = tween(600, delayMillis = 400))
             ) {
                 Column {
                     ModernSectionHeader(
@@ -230,13 +309,13 @@ fun HomeScreen(
                             modifier = Modifier.weight(1f)
                         )
                         ModernActionButton(
-                            title = "API设置",
-                            subtitle = "配置AI密钥",
-                            icon = Icons.Default.Key,
+                            title = "高级设置",
+                            subtitle = "AI与规则配置",
+                            icon = Icons.Default.Settings,
                             gradient = Brush.linearGradient(
                                 colors = listOf(YellowAccent, Color(0xFFF57F17))
                             ),
-                            onClick = { showApiKeyDialog = true },
+                            onClick = onNavigateToSettings,
                             modifier = Modifier.weight(1f)
                         )
                     }
@@ -244,15 +323,12 @@ fun HomeScreen(
             }
         }
 
-        // Recent Photos with animation
+        // Recent Photos
         if (uiState.recentPhotos.isNotEmpty()) {
             item {
                 AnimatedVisibility(
                     visible = isVisible,
-                    enter = slideInVertically(
-                        initialOffsetY = { it / 2 },
-                        animationSpec = tween(durationMillis = 600, delayMillis = 600)
-                    ) + fadeIn(animationSpec = tween(durationMillis = 600, delayMillis = 600))
+                    enter = slideInVertically(initialOffsetY = { it / 2 }) + fadeIn(animationSpec = tween(600, delayMillis = 600))
                 ) {
                     Column {
                         ModernSectionHeader(
@@ -328,109 +404,5 @@ fun HomeScreen(
                 }
             }
         }
-    }
-
-    // API Key Dialog with modern design
-    if (showApiKeyDialog) {
-        LaunchedEffect(showApiKeyDialog) {
-            apiKeyInput = uiState.apiKey
-            baseUrlInput = uiState.baseUrl
-            modelInput = uiState.model
-        }
-        AlertDialog(
-            onDismissRequest = { showApiKeyDialog = false },
-            title = {
-                Text(
-                    "API 设置",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
-                )
-            },
-            text = {
-                Column {
-                    Text(
-                        "配置AI分类服务的连接信息",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    OutlinedTextField(
-                        value = baseUrlInput,
-                        onValueChange = { baseUrlInput = it },
-                        label = { Text("Base URL") },
-                        placeholder = { Text("https://api.openai.com/") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp)
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    OutlinedTextField(
-                        value = apiKeyInput,
-                        onValueChange = { apiKeyInput = it },
-                        label = { Text("API Key") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation()
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    OutlinedTextField(
-                        value = modelInput,
-                        onValueChange = { modelInput = it },
-                        label = { Text("AI 模型") },
-                        placeholder = { Text("mimo-v2.5") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp)
-                    )
-                    if (uiState.testResult != null) {
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Text(
-                            text = uiState.testResult!!,
-                            color = if (uiState.testSuccess) MaterialTheme.colorScheme.primary
-                                    else MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    }
-                }
-            },
-            confirmButton = {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    OutlinedButton(
-                        onClick = {
-                            viewModel.testConnection(baseUrlInput, apiKeyInput, modelInput)
-                        },
-                        enabled = !uiState.isTestingConnection,
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        if (uiState.isTestingConnection) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(16.dp),
-                                strokeWidth = 2.dp
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                        }
-                        Text("测试")
-                    }
-                    Button(
-                        onClick = {
-                            viewModel.setBaseUrl(baseUrlInput.trim())
-                            viewModel.setApiKey(apiKeyInput.trim())
-                            viewModel.setModel(modelInput.trim())
-                            showApiKeyDialog = false
-                        },
-                        shape = RoundedCornerShape(12.dp)
-                    ) { Text("保存") }
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = { showApiKeyDialog = false }
-                ) { Text("取消") }
-            },
-            shape = RoundedCornerShape(20.dp)
-        )
     }
 }

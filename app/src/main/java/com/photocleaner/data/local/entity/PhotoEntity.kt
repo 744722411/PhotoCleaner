@@ -27,5 +27,6 @@ data class PhotoEntity(
     val category: String = "",
     val isLocalUseless: Boolean = false,
     val localReason: String = "",
-    val isInTrash: Boolean = false
+    val isInTrash: Boolean = false,
+    val dHash: Long = 0L
 )

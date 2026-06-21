@@ -1,5 +1,8 @@
 package com.photocleaner.domain.model
 
+import androidx.compose.runtime.Immutable
+
+@Immutable
 data class Photo(
     val id: Long,
     val uri: String,
@@ -16,5 +19,7 @@ data class Photo(
     val category: String = "",
     val isLocalUseless: Boolean = false,
     val localReason: String = "",
-    val isInTrash: Boolean = false
+    val isInTrash: Boolean = false,
+    val dHash: Long = 0L
 )
+

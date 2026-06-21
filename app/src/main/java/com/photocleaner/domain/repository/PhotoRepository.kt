@@ -19,6 +19,7 @@ interface PhotoRepository {
     suspend fun updateClassification(photoId: Long, classification: Classification, confidence: Float, category: String)
     suspend fun deletePhotos(photos: List<Photo>)
     suspend fun restorePhotos(photos: List<Photo>)
+    suspend fun createTrashPendingIntent(photos: List<Photo>): android.app.PendingIntent?
     suspend fun getPhotoById(id: Long): Photo?
     suspend fun getAllPhotoIds(): List<Long>
     suspend fun deletePhotosByIds(ids: List<Long>)

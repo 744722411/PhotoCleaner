@@ -25,6 +25,10 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
+import com.google.mlkit.vision.common.InputImage
+import com.google.mlkit.vision.label.ImageLabeling
+import com.google.mlkit.vision.label.defaults.ImageLabelerOptions
+import kotlinx.coroutines.tasks.await
 
 @Singleton
 class PhotoRepositoryImpl @Inject constructor(
@@ -241,6 +245,14 @@ class PhotoRepositoryImpl @Inject constructor(
     }
 
     override suspend fun deletePhotos(photos: List<Photo>) {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+            val ids = photos.map { it.id }
+            if (ids.isNotEmpty()) {
+                photoDao.setTrashStatus(ids, true)
+            }
+            return
+        }
+
         val trashDir = File(context.getExternalFilesDir(Environment.DIRECTORY_PICTURES), "trash")
         if (!trashDir.exists()) trashDir.mkdirs()
 
@@ -270,6 +282,14 @@ class PhotoRepositoryImpl @Inject constructor(
     }
 
     override suspend fun restorePhotos(photos: List<Photo>) {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+            val ids = photos.map { it.id }
+            if (ids.isNotEmpty()) {
+                photoDao.setTrashStatus(ids, false)
+            }
+            return
+        }
+
         val trashDir = File(context.getExternalFilesDir(Environment.DIRECTORY_PICTURES), "trash")
         val ids = mutableListOf<Long>()
 
@@ -296,6 +316,19 @@ class PhotoRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun createTrashPendingIntent(photos: List<Photo>): android.app.PendingIntent? {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+            val uris = photos.map { Uri.parse(it.uri) }
+            return try {
+                MediaStore.createTrashRequest(context.contentResolver, uris, true)
+            } catch (e: Exception) {
+                android.util.Log.e("PhotoRepositoryImpl", "Failed to create trash request", e)
+                null
+            }
+        }
+        return null
+    }
+
     override suspend fun getPhotoById(id: Long): Photo? =
         photoDao.getPhotoById(id)?.toDomain()
 
@@ -317,19 +350,17 @@ class PhotoRepositoryImpl @Inject constructor(
     override suspend fun detectLocalIssues(photo: Photo): Photo {
         return try {
             val uri = Uri.parse(photo.uri)
-            val inputStream = context.contentResolver.openInputStream(uri) ?: return photo
+            val sampleSize = context.contentResolver.openInputStream(uri)?.use { inputStream ->
+                val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                BitmapFactory.decodeStream(inputStream, null, options)
+                calculateInSampleSize(options, 800, 800)
+            } ?: 1
 
-            // Use inSampleSize for downsampling to reduce memory usage
-            val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-            BitmapFactory.decodeStream(inputStream, null, options)
-            inputStream.close()
-
-            val sampleSize = calculateInSampleSize(options, 800, 800)
             val decodeOptions = BitmapFactory.Options().apply { inSampleSize = sampleSize }
 
-            val inputStream2 = context.contentResolver.openInputStream(uri) ?: return photo
-            val bitmap = BitmapFactory.decodeStream(inputStream2, null, decodeOptions)
-            inputStream2.close()
+            val bitmap = context.contentResolver.openInputStream(uri)?.use { inputStream2 ->
+                BitmapFactory.decodeStream(inputStream2, null, decodeOptions)
+            }
 
             if (bitmap == null) return photo
 
@@ -339,8 +370,30 @@ class PhotoRepositoryImpl @Inject constructor(
                 val isScreenshot = ScreenshotDetector.isScreenshot(
                     context, uri, photo.displayName, photo.width, photo.height, photo.mimeType
                 )
+                
+                // ML Kit Image Labeling
+                var mlKitCategory = ""
+                var mlKitClassification: Classification? = null
+                try {
+                    val inputImage = InputImage.fromBitmap(bitmap, 0)
+                    val labeler = ImageLabeling.getClient(ImageLabelerOptions.DEFAULT_OPTIONS)
+                    val labels = labeler.process(inputImage).await()
+                    
+                    val documentLabels = setOf("Receipt", "Document", "Text", "Font", "Barcode")
+                    for (label in labels) {
+                        if (label.confidence > 0.7f && documentLabels.contains(label.text)) {
+                            mlKitCategory = label.text.lowercase()
+                            mlKitClassification = Classification.UNCERTAIN
+                            break
+                        }
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
 
-                when {
+                val dHash = ImageUtils.computeDHash(bitmap)
+
+                val resultPhoto = when {
                     isBlank -> photo.copy(
                         isLocalUseless = true,
                         localReason = "空白照片",
@@ -362,8 +415,16 @@ class PhotoRepositoryImpl @Inject constructor(
                         confidence = 0.7f,
                         category = "screenshot"
                     )
+                    mlKitClassification != null -> photo.copy(
+                        isLocalUseless = true,
+                        localReason = "文档票据",
+                        classification = Classification.UNCERTAIN,
+                        confidence = 0.8f,
+                        category = mlKitCategory
+                    )
                     else -> photo
                 }
+                resultPhoto.copy(dHash = dHash)
             } finally {
                 bitmap.recycle()
             }
@@ -391,7 +452,8 @@ class PhotoRepositoryImpl @Inject constructor(
         dateModified = dateModified, filePath = filePath,
         classification = try { Classification.valueOf(classification) } catch (_: Exception) { Classification.UNKNOWN },
         confidence = confidence, category = category,
-        isLocalUseless = isLocalUseless, localReason = localReason, isInTrash = isInTrash
+        isLocalUseless = isLocalUseless, localReason = localReason, isInTrash = isInTrash,
+        dHash = dHash
     )
 
     private fun Photo.toEntity() = PhotoEntity(
@@ -399,6 +461,7 @@ class PhotoRepositoryImpl @Inject constructor(
         width = width, height = height, size = size, dateAdded = dateAdded,
         dateModified = dateModified, filePath = filePath, classification = classification.name,
         confidence = confidence, category = category,
-        isLocalUseless = isLocalUseless, localReason = localReason, isInTrash = isInTrash
+        isLocalUseless = isLocalUseless, localReason = localReason, isInTrash = isInTrash,
+        dHash = dHash
     )
 }

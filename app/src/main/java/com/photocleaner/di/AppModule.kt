@@ -53,18 +53,33 @@ object AppModule {
         )
         .addInterceptor { chain ->
             val currentBaseUrl = settingsRepository.getBaseUrlSyncMemory()
-            val normalizedUrl = if (currentBaseUrl.endsWith("/")) currentBaseUrl else "$currentBaseUrl/"
-            val baseUri = java.net.URI(normalizedUrl)
             val original = chain.request()
-            val urlBuilder = original.url.newBuilder()
-                .scheme(baseUri.scheme)
-                .host(baseUri.host)
-            if (baseUri.port > 0) {
-                urlBuilder.port(baseUri.port)
+            try {
+                if (currentBaseUrl.isNotBlank()) {
+                    val normalizedUrl = if (currentBaseUrl.endsWith("/")) currentBaseUrl else "$currentBaseUrl/"
+                    val baseUri = java.net.URI(normalizedUrl)
+                    val scheme = baseUri.scheme ?: "https"
+                    val host = baseUri.host
+                    if (!host.isNullOrBlank()) {
+                        val urlBuilder = original.url.newBuilder()
+                            .scheme(scheme)
+                            .host(host)
+                        if (baseUri.port > 0) {
+                            urlBuilder.port(baseUri.port)
+                        }
+                        val newUrl = urlBuilder.build()
+                        val newRequest = original.newBuilder().url(newUrl).build()
+                        chain.proceed(newRequest)
+                    } else {
+                        chain.proceed(original)
+                    }
+                } else {
+                    chain.proceed(original)
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("AppModule", "Failed to rewrite URL: $currentBaseUrl", e)
+                chain.proceed(original)
             }
-            val newUrl = urlBuilder.build()
-            val newRequest = original.newBuilder().url(newUrl).build()
-            chain.proceed(newRequest)
         }
         .addInterceptor { chain ->
             val apiKey = settingsRepository.getApiKeySyncMemory()
