@@ -49,14 +49,16 @@ class HomeViewModel @Inject constructor(
                 repository.getUselessCount(),
                 repository.getUselessSize()
             ) { total, classified, useless, size ->
-                HomeUiState(
-                    totalPhotos = total,
-                    classifiedPhotos = classified,
-                    uselessPhotos = useless,
-                    spaceSaved = ImageUtils.formatFileSize(size)
-                )
-            }.collect { state ->
-                _uiState.value = state
+                Quadruple(total, classified, useless, size)
+            }.collect { (total, classified, useless, size) ->
+                _uiState.update {
+                    it.copy(
+                        totalPhotos = total,
+                        classifiedPhotos = classified,
+                        uselessPhotos = useless,
+                        spaceSaved = ImageUtils.formatFileSize(size)
+                    )
+                }
             }
         }
 
@@ -130,3 +132,10 @@ class HomeViewModel @Inject constructor(
         _uiState.update { it.copy(testResult = null) }
     }
 }
+
+private data class Quadruple<A, B, C, D>(
+    val first: A,
+    val second: B,
+    val third: C,
+    val fourth: D
+)

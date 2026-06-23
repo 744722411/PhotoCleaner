@@ -3,28 +3,22 @@ package com.photocleaner.di
 import com.photocleaner.data.remote.OpenAIApi
 import com.photocleaner.data.repository.PhotoRepositoryImpl
 import com.photocleaner.data.repository.SettingsRepository
+import com.photocleaner.data.remote.dto.MessageContent
+import com.photocleaner.data.remote.dto.ImageContent
 import com.photocleaner.domain.repository.PhotoRepository
-import com.squareup.moshi.Moshi
+import com.squareup.moshi.*
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
+import java.lang.reflect.Type
 import java.util.concurrent.TimeUnit
 import javax.inject.Singleton
-import com.squareup.moshi.FromJson
-import com.squareup.moshi.ToJson
-import com.squareup.moshi.JsonReader
-import com.squareup.moshi.JsonWriter
-import com.squareup.moshi.Types
-import com.photocleaner.data.remote.dto.MessageContent
-import com.photocleaner.data.remote.dto.ImageContent
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -33,7 +27,7 @@ object AppModule {
     @Provides
     @Singleton
     fun provideMoshi(): Moshi = Moshi.Builder()
-        .add(MessageContentAdapter())
+        .add(MessageContentAdapterFactory())
         .build()
 
     @Provides
@@ -114,20 +108,29 @@ abstract class RepositoryModule {
     abstract fun bindPhotoRepository(impl: PhotoRepositoryImpl): PhotoRepository
 }
 
-class MessageContentAdapter {
-    @FromJson
-    fun fromJson(
-        reader: JsonReader,
-        moshi: Moshi
-    ): MessageContent? {
+/**
+ * Moshi Factory that handles MessageContent polymorphism.
+ * MessageContent can be either a plain string or an array of image objects.
+ */
+class MessageContentAdapterFactory : JsonAdapter.Factory {
+    override fun create(type: Type, annotations: Set<Annotation>, moshi: Moshi): JsonAdapter<*>? {
+        if (Types.getRawType(type) != MessageContent::class.java) return null
+        return MessageContentJsonAdapter(moshi)
+    }
+}
+
+private class MessageContentJsonAdapter(private val moshi: Moshi) : JsonAdapter<MessageContent>() {
+    private val imageListAdapter: JsonAdapter<List<ImageContent>> = moshi.adapter(
+        Types.newParameterizedType(List::class.java, ImageContent::class.java)
+    )
+
+    override fun fromJson(reader: JsonReader): MessageContent? {
         return when (reader.peek()) {
             JsonReader.Token.STRING -> {
                 MessageContent.TextContent(reader.nextString())
             }
             JsonReader.Token.BEGIN_ARRAY -> {
-                val listType = Types.newParameterizedType(List::class.java, ImageContent::class.java)
-                val adapter = moshi.adapter<List<ImageContent>>(listType)
-                val list = adapter.fromJson(reader) ?: emptyList()
+                val list = imageListAdapter.fromJson(reader) ?: emptyList()
                 MessageContent.ImageListContent(list)
             }
             else -> {
@@ -137,18 +140,11 @@ class MessageContentAdapter {
         }
     }
 
-    @ToJson
-    fun toJson(
-        writer: JsonWriter,
-        value: MessageContent?,
-        moshi: Moshi
-    ) {
+    override fun toJson(writer: JsonWriter, value: MessageContent?) {
         when (value) {
             is MessageContent.TextContent -> writer.value(value.text)
             is MessageContent.ImageListContent -> {
-                val listType = Types.newParameterizedType(List::class.java, ImageContent::class.java)
-                val adapter = moshi.adapter<List<ImageContent>>(listType)
-                adapter.toJson(writer, value.images)
+                imageListAdapter.toJson(writer, value.images)
             }
             null -> writer.nullValue()
         }

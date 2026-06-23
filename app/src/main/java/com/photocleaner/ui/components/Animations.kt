@@ -2,15 +2,25 @@ package com.photocleaner.ui.components
 
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
 /**
@@ -58,7 +68,7 @@ fun AnimatedCard(
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit
 ) {
-    var isPressed by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    var isPressed by remember { mutableStateOf(false) }
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.95f else 1f,
         animationSpec = tween(durationMillis = 150),
@@ -67,17 +77,18 @@ fun AnimatedCard(
 
     Box(
         modifier = modifier
-            .androidx.compose.ui.draw.scale(scale)
+            .scale(scale)
             .clip(RoundedCornerShape(16.dp))
-            .androidx.compose.ui.input.pointer.pointerInput(Unit) {
-                awaitPointerEventScope {
-                    while (true) {
-                        val event = awaitPointerEvent()
-                        when (event.type) {
-                            androidx.compose.ui.input.pointer.PointerEventType.Press -> isPressed = true
-                            androidx.compose.ui.input.pointer.PointerEventType.Release,
-                            androidx.compose.ui.input.pointer.PointerEventType.Exit -> isPressed = false
-                        }
+            .pointerInput(Unit) {
+                awaitEachGesture {
+                    awaitFirstDown()
+                    isPressed = true
+                    try {
+                        do {
+                            val event = awaitPointerEvent()
+                        } while (event.changes.any { it.pressed })
+                    } finally {
+                        isPressed = false
                     }
                 }
             }
@@ -100,13 +111,13 @@ fun GradientText(
         )
     )
 ) {
-    androidx.compose.material3.Text(
+    Text(
         text = text,
         modifier = modifier,
-        style = androidx.compose.material3.MaterialTheme.typography.headlineLarge.copy(
+        style = MaterialTheme.typography.headlineLarge.copy(
             brush = gradient
         ),
-        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+        fontWeight = FontWeight.Bold
     )
 }
 
@@ -155,12 +166,11 @@ fun AnimatedCounter(
         label = "counter"
     )
 
-    androidx.compose.material3.Text(
+    Text(
         text = animatedValue.toString(),
         modifier = modifier,
-        style = androidx.compose.material3.MaterialTheme.typography.headlineMedium,
+        style = MaterialTheme.typography.headlineMedium,
         color = color,
-        fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+        fontWeight = FontWeight.Bold
     )
 }
-

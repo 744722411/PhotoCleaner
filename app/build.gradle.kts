@@ -17,6 +17,10 @@ android {
         versionCode = 15
         versionName = "1.6.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        ndk {
+            abiFilters += listOf("arm64-v8a")
+        }
     }
 
     buildTypes {
@@ -35,6 +39,14 @@ android {
     buildFeatures {
         buildConfig = true
         compose = true
+    }
+}
+
+configurations.all {
+    resolutionStrategy {
+        force("org.jetbrains.kotlin:kotlin-stdlib:2.3.21")
+        force("org.jetbrains.kotlin:kotlin-stdlib-jdk7:2.3.21")
+        force("org.jetbrains.kotlin:kotlin-stdlib-jdk8:2.3.21")
     }
 }
 

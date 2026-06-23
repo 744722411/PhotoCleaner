@@ -182,7 +182,7 @@ class ScanViewModel @Inject constructor(
 
                 val isPaused = { scanStateHolder.uiState.value.isPaused }
 
-                val photos = scanPhotosUseCase(
+                val newPhotos = scanPhotosUseCase(
                     selectedDirectories = selectedDirectories,
                     batchSize = batchSize,
                     isPaused = isPaused,
@@ -206,13 +206,16 @@ class ScanViewModel @Inject constructor(
                     }
                 )
 
-                val uselessCount = photos.count { it.classification == Classification.USELESS }
+                // Get all photos and count all useless photos in the DB to reflect accurate state
+                val allPhotos = photoRepository.getAllPhotos().first()
+                val uselessCount = allPhotos.count { it.classification == Classification.USELESS && !it.isInTrash }
+
                 scanStateHolder.updateState {
                     it.copy(
                         isScanning = false,
                         scanComplete = true,
-                        classifyComplete = true, // Directly complete since cloud AI is removed
-                        photos = photos,
+                        classifyComplete = true,
+                        photos = allPhotos,
                         uselessFound = uselessCount
                     )
                 }

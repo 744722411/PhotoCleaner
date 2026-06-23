@@ -347,9 +347,30 @@ class PhotoRepositoryImpl @Inject constructor(
         photoDao.clearAll()
     }
 
+    private val labeler by lazy {
+        ImageLabeling.getClient(ImageLabelerOptions.DEFAULT_OPTIONS)
+    }
+
     override suspend fun detectLocalIssues(photo: Photo): Photo {
         return try {
             val uri = Uri.parse(photo.uri)
+            
+            // Step 1: Fast screenshot detection (no Bitmap decode needed)
+            val isScreenshot = ScreenshotDetector.isScreenshot(
+                context, uri, photo.displayName, photo.width, photo.height, photo.mimeType
+            )
+            
+            if (isScreenshot) {
+                return photo.copy(
+                    isLocalUseless = true,
+                    localReason = "截图",
+                    classification = Classification.UNCERTAIN,
+                    confidence = 0.7f,
+                    category = "screenshot"
+                )
+            }
+
+            // Step 2: Only decode Bitmap for actual photos that need blur/blank/MLKit detection
             val sampleSize = context.contentResolver.openInputStream(uri)?.use { inputStream ->
                 val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
                 BitmapFactory.decodeStream(inputStream, null, options)
@@ -365,18 +386,35 @@ class PhotoRepositoryImpl @Inject constructor(
             if (bitmap == null) return photo
 
             try {
-                val isBlurry = BlurDetector.isBlurry(bitmap)
+                // Check if blank (uniform color)
                 val isBlank = ImageUtils.isBlank(bitmap)
-                val isScreenshot = ScreenshotDetector.isScreenshot(
-                    context, uri, photo.displayName, photo.width, photo.height, photo.mimeType
-                )
-                
-                // ML Kit Image Labeling
+                if (isBlank) {
+                    return photo.copy(
+                        isLocalUseless = true,
+                        localReason = "空白照片",
+                        classification = Classification.USELESS,
+                        confidence = 0.95f,
+                        category = "blank_photo"
+                    )
+                }
+
+                // Check if blurry
+                val isBlurry = BlurDetector.isBlurry(bitmap)
+                if (isBlurry) {
+                    return photo.copy(
+                        isLocalUseless = true,
+                        localReason = "模糊照片",
+                        classification = Classification.USELESS,
+                        confidence = 0.9f,
+                        category = "blurry_photo"
+                    )
+                }
+
+                // ML Kit Image Labeling (reuse labeler instance)
                 var mlKitCategory = ""
                 var mlKitClassification: Classification? = null
                 try {
                     val inputImage = InputImage.fromBitmap(bitmap, 0)
-                    val labeler = ImageLabeling.getClient(ImageLabelerOptions.DEFAULT_OPTIONS)
                     val labels = labeler.process(inputImage).await()
                     
                     val documentLabels = setOf("Receipt", "Document", "Text", "Font", "Barcode")
@@ -393,36 +431,16 @@ class PhotoRepositoryImpl @Inject constructor(
 
                 val dHash = ImageUtils.computeDHash(bitmap)
 
-                val resultPhoto = when {
-                    isBlank -> photo.copy(
-                        isLocalUseless = true,
-                        localReason = "空白照片",
-                        classification = Classification.USELESS,
-                        confidence = 0.95f,
-                        category = "blank_photo"
-                    )
-                    isBlurry -> photo.copy(
-                        isLocalUseless = true,
-                        localReason = "模糊照片",
-                        classification = Classification.USELESS,
-                        confidence = 0.9f,
-                        category = "blurry_photo"
-                    )
-                    isScreenshot -> photo.copy(
-                        isLocalUseless = true,
-                        localReason = "截图",
-                        classification = Classification.UNCERTAIN,
-                        confidence = 0.7f,
-                        category = "screenshot"
-                    )
-                    mlKitClassification != null -> photo.copy(
+                val resultPhoto = if (mlKitClassification != null) {
+                    photo.copy(
                         isLocalUseless = true,
                         localReason = "文档票据",
                         classification = Classification.UNCERTAIN,
                         confidence = 0.8f,
                         category = mlKitCategory
                     )
-                    else -> photo
+                } else {
+                    photo
                 }
                 resultPhoto.copy(dHash = dHash)
             } finally {

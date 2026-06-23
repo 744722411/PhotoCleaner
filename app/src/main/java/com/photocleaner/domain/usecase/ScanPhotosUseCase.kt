@@ -72,6 +72,9 @@ class ScanPhotosUseCase @Inject constructor(
             try {
                 val localResult = repository.detectLocalIssues(photo)
                 results.add(localResult)
+                
+                // Write single result immediately to database so UI updates in real-time
+                repository.insertPhotos(listOf(localResult))
 
                 if (localResult.isLocalUseless) {
                     onLog(ScanLog(
@@ -85,12 +88,11 @@ class ScanPhotosUseCase @Inject constructor(
             } catch (e: Exception) {
                 onLog(ScanLog(photo.displayName, ScanLogStatus.ERROR, "检测失败: ${e.message}"))
                 results.add(photo)
+                repository.insertPhotos(listOf(photo))
             }
         }
 
-        onLog(ScanLog("", ScanLogStatus.INFO, "本地检测完成，正在保存结果..."))
-        repository.insertPhotos(results)
-        onLog(ScanLog("", ScanLogStatus.INFO, "扫描完成！共 ${results.size} 张照片"))
+        onLog(ScanLog("", ScanLogStatus.INFO, "扫描完成！共 ${results.size} 张新照片已录入"))
         results
     }
 }
