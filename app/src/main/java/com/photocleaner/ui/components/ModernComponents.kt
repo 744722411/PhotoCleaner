@@ -1,12 +1,27 @@
 package com.photocleaner.ui.components
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
+import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -16,11 +31,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.photocleaner.ui.theme.*
+import com.photocleaner.ui.theme.BlueAccent
+import com.photocleaner.ui.theme.DarkSurface
 
-/**
- * Modern stat card with icon and gradient
- */
 @Composable
 fun ModernStatCard(
     title: String,
@@ -34,45 +47,52 @@ fun ModernStatCard(
         colors = CardDefaults.cardColors(
             containerColor = DarkSurface.copy(alpha = 0.8f)
         ),
-        shape = RoundedCornerShape(16.dp)
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.05f)),
+        shape = RoundedCornerShape(14.dp)
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 128.dp)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.SpaceBetween
         ) {
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(CircleShape)
-                    .background(color.copy(alpha = 0.2f)),
-                contentAlignment = Alignment.Center
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top
             ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = color,
-                    modifier = Modifier.size(24.dp)
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(color.copy(alpha = 0.16f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = color,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = Color.White.copy(alpha = 0.55f)
                 )
             }
-            Spacer(modifier = Modifier.height(12.dp))
+
             Text(
                 text = value,
-                style = MaterialTheme.typography.headlineMedium,
+                style = MaterialTheme.typography.headlineSmall,
                 color = Color.White,
                 fontWeight = FontWeight.Bold
-            )
-            Text(
-                text = title,
-                style = MaterialTheme.typography.labelMedium,
-                color = Color.White.copy(alpha = 0.6f)
             )
         }
     }
 }
 
-/**
- * Modern action button with gradient
- */
 @Composable
 fun ModernActionButton(
     title: String,
@@ -85,46 +105,65 @@ fun ModernActionButton(
     Card(
         modifier = modifier,
         onClick = onClick,
-        colors = CardDefaults.cardColors(
-            containerColor = Color.Transparent
-        ),
-        shape = RoundedCornerShape(16.dp)
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+        shape = RoundedCornerShape(14.dp)
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
+                .heightIn(min = 118.dp)
                 .background(gradient)
                 .padding(16.dp)
         ) {
             Column(
-                horizontalAlignment = Alignment.CenterHorizontally
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.SpaceBetween
             ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(32.dp)
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = subtitle,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.White.copy(alpha = 0.8f)
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .background(Color.White.copy(alpha = 0.16f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = icon,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                    Icon(
+                        imageVector = Icons.Default.ArrowForward,
+                        contentDescription = null,
+                        tint = Color.White.copy(alpha = 0.85f),
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = subtitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.White.copy(alpha = 0.8f)
+                    )
+                }
             }
         }
     }
 }
 
-/**
- * Modern classification badge with icon
- */
 @Composable
 fun ModernClassificationBadge(
     classification: String,
@@ -160,9 +199,6 @@ fun ModernClassificationBadge(
     }
 }
 
-/**
- * Modern loading indicator with gradient
- */
 @Composable
 fun ModernLoadingIndicator(
     modifier: Modifier = Modifier,
@@ -176,9 +212,6 @@ fun ModernLoadingIndicator(
     )
 }
 
-/**
- * Modern empty state
- */
 @Composable
 fun ModernEmptyState(
     icon: ImageVector,
@@ -210,9 +243,6 @@ fun ModernEmptyState(
     }
 }
 
-/**
- * Modern section header
- */
 @Composable
 fun ModernSectionHeader(
     title: String,
@@ -228,7 +258,7 @@ fun ModernSectionHeader(
             imageVector = icon,
             contentDescription = null,
             tint = BlueAccent,
-            modifier = Modifier.size(20.dp)
+            modifier = Modifier.size(18.dp)
         )
         Text(
             text = title,
@@ -239,9 +269,6 @@ fun ModernSectionHeader(
     }
 }
 
-/**
- * Modern card with glass effect
- */
 @Composable
 fun GlassCard(
     modifier: Modifier = Modifier,
@@ -252,7 +279,8 @@ fun GlassCard(
         colors = CardDefaults.cardColors(
             containerColor = DarkSurface.copy(alpha = 0.6f)
         ),
-        shape = RoundedCornerShape(20.dp)
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.05f)),
+        shape = RoundedCornerShape(16.dp)
     ) {
         content()
     }

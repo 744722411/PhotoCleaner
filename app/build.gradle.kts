@@ -3,7 +3,6 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.hilt.android)
     alias(libs.plugins.ksp)
-    alias(libs.plugins.kotlin.serialization)
 }
 
 android {
@@ -14,8 +13,8 @@ android {
         applicationId = "com.photocleaner"
         minSdk = 26
         targetSdk = 36
-        versionCode = 15
-        versionName = "1.6.0"
+        versionCode = 16
+        versionName = "1.7.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         ndk {
@@ -81,30 +80,17 @@ dependencies {
     implementation(libs.room.ktx)
     ksp(libs.room.compiler)
 
-    // Retrofit + OkHttp + Moshi - Latest
-    implementation(libs.retrofit)
-    implementation(libs.retrofit.converter.moshi)
-    implementation(libs.okhttp)
-    implementation(libs.okhttp.logging)
-    implementation(libs.moshi)
-    ksp(libs.moshi.kotlin.codegen)
-
     // Coil 3 - Latest
     implementation(libs.coil.compose)
-    implementation(libs.coil.network.okhttp)
 
     // ExifInterface - Latest
     implementation(libs.androidx.exifinterface)
 
     // Coroutines - Latest
     implementation(libs.kotlinx.coroutines.android)
-    implementation(libs.kotlinx.serialization.json)
 
     // DataStore Preferences - Latest
     implementation(libs.androidx.datastore.preferences)
-
-    // Security Crypto
-    implementation(libs.androidx.security.crypto)
     
     // ML Kit Image Labeling
     implementation(libs.mlkit.image.labeling)

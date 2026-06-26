@@ -1,22 +1,27 @@
 package com.photocleaner.ui.scan
 
-import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.photocleaner.domain.model.DirectoryInfo
 import com.photocleaner.data.repository.SettingsRepository
 import com.photocleaner.domain.model.Classification
+import com.photocleaner.domain.model.DirectoryInfo
 import com.photocleaner.domain.model.Photo
 import com.photocleaner.domain.repository.PhotoRepository
-import com.photocleaner.domain.usecase.ScanPhotosUseCase
 import com.photocleaner.domain.usecase.ScanLogStatus
+import com.photocleaner.domain.usecase.ScanPhotosUseCase
 import com.photocleaner.service.ScanStateHolder
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.flow.*
-import kotlinx.coroutines.launch
 import javax.inject.Inject
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
 data class ScanUiState(
     val isScanning: Boolean = false,
@@ -42,65 +47,69 @@ data class ScanUiState(
 
 @HiltViewModel
 class ScanViewModel @Inject constructor(
-    @ApplicationContext private val appContext: Context,
     private val scanPhotosUseCase: ScanPhotosUseCase,
     private val settingsRepository: SettingsRepository,
     private val photoRepository: PhotoRepository,
     private val scanStateHolder: ScanStateHolder
 ) : ViewModel() {
 
-    // Local UI state (directory picker, etc.) merged with service state
-    private val _localState = MutableStateFlow(
+    private val localState = MutableStateFlow(
         ScanUiState(selectedDirectories = emptySet(), showDirectoryPicker = false)
     )
+    private var hasDirectorySelectionDraft = false
 
-    // Expose merged state: service scan progress + local UI state
     val uiState: StateFlow<ScanUiState> = combine(
         scanStateHolder.uiState,
-        _localState,
+        localState,
         settingsRepository.selectedDirectories,
         settingsRepository.batchSize
-    ) { serviceState, localState, selectedDirs, batchSize ->
+    ) { serviceState, localUiState, persistedSelectedDirs, batchSize ->
         serviceState.copy(
-            selectedDirectories = if (localState.selectedDirectories.isNotEmpty()) localState.selectedDirectories else selectedDirs,
-            showDirectoryPicker = localState.showDirectoryPicker,
-            discoveredDirectories = localState.discoveredDirectories,
-            isDiscoveringDirs = localState.isDiscoveringDirs,
+            selectedDirectories = if (
+                hasDirectorySelectionDraft ||
+                localUiState.discoveredDirectories.isNotEmpty() ||
+                localUiState.isDiscoveringDirs
+            ) {
+                localUiState.selectedDirectories
+            } else {
+                persistedSelectedDirs
+            },
+            showDirectoryPicker = localUiState.showDirectoryPicker,
+            discoveredDirectories = localUiState.discoveredDirectories,
+            isDiscoveringDirs = localUiState.isDiscoveringDirs,
             batchSize = batchSize
         )
     }.stateIn(
         scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5000),
+        started = SharingStarted.WhileSubscribed(5_000),
         initialValue = ScanUiState()
     )
 
+    private var scanJob: Job? = null
+
     fun showDirectoryPicker() {
-        _localState.update { it.copy(showDirectoryPicker = true) }
-        if (_localState.value.discoveredDirectories.isEmpty() && !_localState.value.isDiscoveringDirs) {
+        localState.update { it.copy(showDirectoryPicker = true) }
+        if (localState.value.discoveredDirectories.isEmpty() && !localState.value.isDiscoveringDirs) {
             discoverDirectories()
         }
     }
 
     fun hideDirectoryPicker() {
-        _localState.update { it.copy(showDirectoryPicker = false) }
+        localState.update { it.copy(showDirectoryPicker = false) }
     }
 
     fun discoverDirectories() {
         viewModelScope.launch {
-            _localState.update { it.copy(isDiscoveringDirs = true) }
+            localState.update { it.copy(isDiscoveringDirs = true) }
             try {
                 val dirs = photoRepository.discoverDirectories()
-                _localState.update { state ->
-                    val currentDirs = scanStateHolder.uiState.value.selectedDirectories.ifEmpty {
-                        settingsRepository.getSelectedDirectoriesSync()
-                    }
-                    // If no dirs were previously selected (first run), select all discovered dirs
-                    val selected = if (currentDirs.isEmpty() && dirs.isNotEmpty()) {
-                        dirs.map { it.relativePath }.toSet()
-                    } else if (state.selectedDirectories.isNotEmpty()) {
-                        state.selectedDirectories
-                    } else {
-                        currentDirs
+                localState.update { state ->
+                    val persisted = settingsRepository.getSelectedDirectoriesSync()
+                    val selected = when {
+                        hasDirectorySelectionDraft -> state.selectedDirectories
+                        persisted.isNotEmpty() -> persisted
+                        dirs.isNotEmpty() -> dirs.map { it.relativePath }.toSet()
+                        else -> emptySet()
                     }
                     state.copy(
                         discoveredDirectories = dirs,
@@ -109,31 +118,34 @@ class ScanViewModel @Inject constructor(
                     )
                 }
             } catch (e: Exception) {
-                _localState.update { it.copy(isDiscoveringDirs = false) }
-                scanStateHolder.updateState { it.copy(error = "目录扫描失败: ${e.message}") }
+                localState.update { it.copy(isDiscoveringDirs = false) }
+                scanStateHolder.updateState {
+                    it.copy(error = "目录扫描失败: ${e.message}")
+                }
             }
         }
     }
 
     fun toggleDirectory(dir: String) {
-        _localState.update { state ->
+        hasDirectorySelectionDraft = true
+        localState.update { state ->
             val current = state.selectedDirectories.toMutableSet()
-            if (current.contains(dir)) {
+            if (!current.add(dir)) {
                 current.remove(dir)
-            } else {
-                current.add(dir)
             }
             state.copy(selectedDirectories = current)
         }
     }
 
     fun selectAllDirectories() {
-        val allDirs = _localState.value.discoveredDirectories.map { it.relativePath }.toSet()
-        _localState.update { it.copy(selectedDirectories = allDirs) }
+        hasDirectorySelectionDraft = true
+        val allDirs = localState.value.discoveredDirectories.map { it.relativePath }.toSet()
+        localState.update { it.copy(selectedDirectories = allDirs) }
     }
 
     fun deselectAllDirectories() {
-        _localState.update { it.copy(selectedDirectories = emptySet()) }
+        hasDirectorySelectionDraft = true
+        localState.update { it.copy(selectedDirectories = emptySet()) }
     }
 
     fun setBatchSize(size: Int) {
@@ -142,89 +154,135 @@ class ScanViewModel @Inject constructor(
         }
     }
 
-    fun saveDirectories() {
-        viewModelScope.launch {
-            settingsRepository.setSelectedDirectories(_localState.value.selectedDirectories)
-            scanStateHolder.updateState { it.copy(selectedDirectories = _localState.value.selectedDirectories) }
+    suspend fun persistSelectedDirectories() {
+        val selected = getEffectiveSelectedDirectories()
+        settingsRepository.setSelectedDirectories(selected)
+        scanStateHolder.updateState { it.copy(selectedDirectories = selected) }
+    }
+
+    private suspend fun getEffectiveSelectedDirectories(): Set<String> {
+        val local = localState.value
+        return if (
+            hasDirectorySelectionDraft ||
+            local.discoveredDirectories.isNotEmpty() ||
+            local.isDiscoveringDirs
+        ) {
+            local.selectedDirectories
+        } else {
+            settingsRepository.getSelectedDirectoriesSync()
         }
     }
 
-    private var scanJob: Job? = null
+    fun saveDirectories() {
+        viewModelScope.launch {
+            persistSelectedDirectories()
+        }
+    }
 
     fun startScan() {
         val currentState = scanStateHolder.uiState.value
-        if (currentState.isScanning || currentState.isClassifying) return
-
-        viewModelScope.launch {
-            settingsRepository.setSelectedDirectories(_localState.value.selectedDirectories)
+        if (currentState.isScanning || currentState.isClassifying) {
+            return
         }
 
-        scanStateHolder.updateState {
-            it.copy(
-                isScanning = true,
-                isPaused = false,
-                error = null,
-                scanComplete = false,
-                classifyComplete = false,
-                scanLogs = emptyList()
-            )
-        }
-        scanStateHolder.addLog(ScanLogEntry(message = "🔍 开始扫描照片...", status = LogStatus.INFO))
-
+        scanJob?.cancel()
         scanJob = viewModelScope.launch {
             try {
+                persistSelectedDirectories()
+
+                scanStateHolder.updateState {
+                    it.copy(
+                        isScanning = true,
+                        isPaused = false,
+                        isClassifying = false,
+                        isClassifyPaused = false,
+                        error = null,
+                        scanComplete = false,
+                        classifyComplete = false,
+                        scanLogs = emptyList(),
+                        scannedCount = 0,
+                        totalToScan = 0,
+                        classifiedCount = 0,
+                        totalToClassify = 0,
+                        photos = emptyList(),
+                        uselessFound = 0
+                    )
+                }
+                scanStateHolder.addLog(
+                    ScanLogEntry(message = "开始扫描照片...", status = LogStatus.INFO)
+                )
+
                 val batchSize = settingsRepository.getBatchSizeSync()
                 val selectedDirectories = settingsRepository.getSelectedDirectoriesSync()
 
                 if (batchSize > 0) {
-                    scanStateHolder.addLog(ScanLogEntry(message = "📦 每次处理数量: $batchSize", status = LogStatus.INFO))
+                    scanStateHolder.addLog(
+                        ScanLogEntry(
+                            message = "每次处理数量: $batchSize",
+                            status = LogStatus.INFO
+                        )
+                    )
                 }
 
-                val isPaused = { scanStateHolder.uiState.value.isPaused }
-
-                val newPhotos = scanPhotosUseCase(
+                val scannedPhotos = scanPhotosUseCase(
                     selectedDirectories = selectedDirectories,
                     batchSize = batchSize,
-                    isPaused = isPaused,
+                    isPaused = { scanStateHolder.uiState.value.isPaused },
                     onProgress = { scanned, total ->
-                        scanStateHolder.updateState { state ->
-                            state.copy(scannedCount = scanned, totalToScan = total)
+                        scanStateHolder.updateState {
+                            it.copy(scannedCount = scanned, totalToScan = total)
                         }
                     },
                     onLog = { log ->
-                        scanStateHolder.addLog(ScanLogEntry(
-                            photoName = log.photoName,
-                            status = when (log.status) {
-                                com.photocleaner.domain.usecase.ScanLogStatus.PROCESSING -> LogStatus.PROCESSING
-                                com.photocleaner.domain.usecase.ScanLogStatus.LOCAL_HIT -> LogStatus.LOCAL_HIT
-                                com.photocleaner.domain.usecase.ScanLogStatus.SUCCESS -> LogStatus.SUCCESS
-                                com.photocleaner.domain.usecase.ScanLogStatus.ERROR -> LogStatus.ERROR
-                                com.photocleaner.domain.usecase.ScanLogStatus.INFO -> LogStatus.INFO
-                            },
-                            message = log.message
-                        ))
+                        scanStateHolder.addLog(
+                            ScanLogEntry(
+                                photoName = log.photoName,
+                                status = when (log.status) {
+                                    ScanLogStatus.PROCESSING -> LogStatus.PROCESSING
+                                    ScanLogStatus.LOCAL_HIT -> LogStatus.LOCAL_HIT
+                                    ScanLogStatus.SUCCESS -> LogStatus.SUCCESS
+                                    ScanLogStatus.ERROR -> LogStatus.ERROR
+                                    ScanLogStatus.INFO -> LogStatus.INFO
+                                },
+                                message = log.message
+                            )
+                        )
                     }
                 )
 
-                // Get all photos and count all useless photos in the DB to reflect accurate state
                 val allPhotos = photoRepository.getAllPhotos().first()
-                val uselessCount = allPhotos.count { it.classification == Classification.USELESS && !it.isInTrash }
+                val uselessCount = allPhotos.count {
+                    it.classification == Classification.USELESS && !it.isInTrash
+                }
 
                 scanStateHolder.updateState {
                     it.copy(
                         isScanning = false,
+                        isClassifying = false,
+                        isClassifyPaused = false,
                         scanComplete = true,
                         classifyComplete = true,
                         photos = allPhotos,
-                        uselessFound = uselessCount
+                        uselessFound = uselessCount,
+                        classifiedCount = scannedPhotos.size,
+                        totalToClassify = scannedPhotos.size
                     )
                 }
             } catch (e: Exception) {
-                if (e !is kotlinx.coroutines.CancellationException) {
+                if (e !is CancellationException) {
                     scanStateHolder.updateState {
-                        it.copy(isScanning = false, error = e.message ?: "扫描失败")
+                        it.copy(
+                            isScanning = false,
+                            isClassifying = false,
+                            error = e.message ?: "扫描失败"
+                        )
                     }
-                    scanStateHolder.addLog(ScanLogEntry(message = "❌ 扫描失败: ${e.message}", status = LogStatus.ERROR))
+                    scanStateHolder.addLog(
+                        ScanLogEntry(
+                            message = "扫描失败: ${e.message}",
+                            status = LogStatus.ERROR
+                        )
+                    )
                 }
             }
         }
@@ -232,12 +290,12 @@ class ScanViewModel @Inject constructor(
 
     fun pauseScan() {
         scanStateHolder.updateState { it.copy(isPaused = true) }
-        scanStateHolder.addLog(ScanLogEntry(message = "⏸️ 扫描已暂停", status = LogStatus.INFO))
+        scanStateHolder.addLog(ScanLogEntry(message = "扫描已暂停", status = LogStatus.INFO))
     }
 
     fun resumeScan() {
         scanStateHolder.updateState { it.copy(isPaused = false) }
-        scanStateHolder.addLog(ScanLogEntry(message = "▶️ 扫描已继续", status = LogStatus.INFO))
+        scanStateHolder.addLog(ScanLogEntry(message = "扫描已继续", status = LogStatus.INFO))
     }
 
     fun stopScan() {
@@ -250,22 +308,13 @@ class ScanViewModel @Inject constructor(
                 isClassifyPaused = false
             )
         }
-        scanStateHolder.addLog(ScanLogEntry(message = "⏹️ 已停止", status = LogStatus.INFO))
-    }
-
-    fun pauseClassify() {
-        scanStateHolder.updateState { it.copy(isClassifyPaused = true) }
-        scanStateHolder.addLog(ScanLogEntry(message = "⏸️ AI分类已暂停", status = LogStatus.INFO))
-    }
-
-    fun resumeClassify() {
-        scanStateHolder.updateState { it.copy(isClassifyPaused = false) }
-        scanStateHolder.addLog(ScanLogEntry(message = "▶️ AI分类已继续", status = LogStatus.INFO))
+        scanStateHolder.addLog(ScanLogEntry(message = "已停止", status = LogStatus.INFO))
     }
 
     fun reset() {
         scanJob?.cancel()
         scanStateHolder.reset()
-        _localState.update { ScanUiState() }
+        hasDirectorySelectionDraft = false
+        localState.update { ScanUiState() }
     }
 }

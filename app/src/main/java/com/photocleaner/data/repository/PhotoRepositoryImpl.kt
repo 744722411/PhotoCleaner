@@ -9,7 +9,6 @@ import android.provider.MediaStore
 import com.photocleaner.data.local.PhotoDao
 import com.photocleaner.data.local.entity.PhotoEntity
 import com.photocleaner.domain.model.DirectoryInfo
-import com.photocleaner.data.remote.OpenAIService
 import com.photocleaner.domain.model.Classification
 import com.photocleaner.domain.model.Photo
 import com.photocleaner.domain.repository.PhotoRepository
@@ -33,8 +32,6 @@ import kotlinx.coroutines.tasks.await
 @Singleton
 class PhotoRepositoryImpl @Inject constructor(
     private val photoDao: PhotoDao,
-    private val openAIService: OpenAIService,
-    private val settingsRepository: SettingsRepository,
     @ApplicationContext private val context: Context
 ) : PhotoRepository {
 
@@ -224,18 +221,6 @@ class PhotoRepositoryImpl @Inject constructor(
                     imageCount = count
                 )
             }.sortedByDescending { it.imageCount }
-    }
-
-    override suspend fun classifyPhoto(photo: Photo): Photo {
-        val apiKey = settingsRepository.getApiKeySync()
-        if (apiKey.isBlank()) return photo
-        val model = settingsRepository.getModelSync()
-        val (classification, confidence, category) = openAIService.classifyPhoto(photo.uri, apiKey, model)
-        return photo.copy(
-            classification = classification,
-            confidence = confidence,
-            category = category
-        )
     }
 
     override suspend fun updateClassification(

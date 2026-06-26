@@ -205,8 +205,15 @@ class ReviewViewModel @Inject constructor(
     }
 
     private fun deletePhotos(photos: List<Photo>) {
+        if (photos.isEmpty()) return
+
         deleteJob?.cancel()
-        pendingDeletePhotosList.addAll(photos)
+        val existingIds = pendingDeletePhotosList.mapTo(mutableSetOf()) { it.id }
+        photos.forEach { photo ->
+            if (existingIds.add(photo.id)) {
+                pendingDeletePhotosList.add(photo)
+            }
+        }
 
         viewModelScope.launch {
             try {
@@ -217,7 +224,7 @@ class ReviewViewModel @Inject constructor(
 
         _uiState.update { state ->
             state.copy(
-                deletedCount = state.deletedCount + photos.size,
+                deletedCount = pendingDeletePhotosList.size,
                 showUndo = true,
                 lastDeletedPhotos = pendingDeletePhotosList.toList()
             )
@@ -226,7 +233,6 @@ class ReviewViewModel @Inject constructor(
         deleteJob = viewModelScope.launch {
             kotlinx.coroutines.delay(5000)
             _uiState.update { it.copy(showUndo = false) }
-            commitPendingDeletes()
         }
     }
 
@@ -252,7 +258,6 @@ class ReviewViewModel @Inject constructor(
     }
 
     fun commitPendingDeletes() {
-        deleteJob?.cancel()
         val photos = pendingDeletePhotosList.toList()
         if (photos.isEmpty()) return
 
@@ -260,19 +265,37 @@ class ReviewViewModel @Inject constructor(
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
                 val pendingIntent = repository.createTrashPendingIntent(photos)
                 if (pendingIntent != null) {
+                    _uiState.update { it.copy(showUndo = false) }
                     _event.emit(ReviewEvent.LaunchTrashIntent(pendingIntent))
                 } else {
+                    try {
+                        deletePhotosUseCase.restore(photos)
+                    } catch (_: Exception) {}
                     pendingDeletePhotosList.clear()
+                    _uiState.update { state ->
+                        state.copy(
+                            showUndo = false,
+                            lastDeletedPhotos = emptyList(),
+                            deletedCount = maxOf(0, state.deletedCount - photos.size)
+                        )
+                    }
                 }
             } else {
                 pendingDeletePhotosList.clear()
+                _uiState.update {
+                    it.copy(
+                        showUndo = false,
+                        lastDeletedPhotos = emptyList(),
+                        deletedCount = 0
+                    )
+                }
             }
         }
     }
 
     fun onTrashConfirmed() {
         pendingDeletePhotosList.clear()
-        _uiState.update { it.copy(lastDeletedPhotos = emptyList()) }
+        _uiState.update { it.copy(showUndo = false, lastDeletedPhotos = emptyList()) }
     }
 
     fun onTrashCanceled() {
@@ -284,6 +307,7 @@ class ReviewViewModel @Inject constructor(
             } catch (_: Exception) {}
             _uiState.update { state ->
                 state.copy(
+                    showUndo = false,
                     lastDeletedPhotos = emptyList(),
                     deletedCount = maxOf(0, state.deletedCount - photos.size)
                 )

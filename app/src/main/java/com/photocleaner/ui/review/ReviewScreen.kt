@@ -2,12 +2,18 @@ package com.photocleaner.ui.review
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.*
-import androidx.compose.animation.core.*
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -39,7 +45,9 @@ import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.photocleaner.domain.model.Classification
 import com.photocleaner.domain.model.Photo
-import com.photocleaner.ui.components.*
+import com.photocleaner.ui.components.GlassCard
+import com.photocleaner.ui.components.ModernEmptyState
+import com.photocleaner.ui.components.ModernLoadingIndicator
 import com.photocleaner.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -48,10 +56,7 @@ fun ReviewScreen(
     viewModel: ReviewViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val snackbarHostState = remember { SnackbarHostState() }
-    val context = LocalContext.current
 
-    // Activity Result Launcher for MediaStore system trash dialog
     val trashLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartIntentSenderForResult()
     ) { result ->
@@ -62,57 +67,39 @@ fun ReviewScreen(
         }
     }
 
-    // Subscribe to event flow
     LaunchedEffect(viewModel) {
         viewModel.event.collect { event ->
             when (event) {
                 is ReviewEvent.LaunchTrashIntent -> {
-                    try {
-                        val request = androidx.activity.result.IntentSenderRequest.Builder(
-                            event.pendingIntent.intentSender
-                        ).build()
-                        trashLauncher.launch(request)
-                    } catch (e: Exception) {
-                        e.printStackTrace()
-                    }
+                    val request = androidx.activity.result.IntentSenderRequest.Builder(
+                        event.pendingIntent.intentSender
+                    ).build()
+                    trashLauncher.launch(request)
                 }
             }
         }
     }
 
-    // Commit deletes when page is closed
     DisposableEffect(viewModel) {
         onDispose {
             viewModel.commitPendingDeletes()
         }
     }
 
-    // Animated entrance
-    var isVisible by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) {
-        isVisible = true
-    }
-
-    // Delete confirmation dialog state
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
     var pendingDeletePhotos by remember { mutableStateOf<List<Photo>>(emptyList()) }
     var isPendingBatchDelete by remember { mutableStateOf(false) }
-    var isGridView by remember { mutableStateOf(false) }
+    var isGridView by remember { mutableStateOf(true) }
 
-    // Material You dynamic colors gradient background
-    val primaryColor = MaterialTheme.colorScheme.primary
-    val secondaryColor = MaterialTheme.colorScheme.secondaryContainer
-    val backgroundColor = MaterialTheme.colorScheme.background
-    val gradientColors = remember(primaryColor, secondaryColor, backgroundColor) {
+    val gradientColors = remember {
         listOf(
-            primaryColor.copy(alpha = 0.12f),
-            secondaryColor.copy(alpha = 0.08f),
-            backgroundColor
+            MaterialTheme.colorScheme.primary.copy(alpha = 0.10f),
+            MaterialTheme.colorScheme.secondary.copy(alpha = 0.08f),
+            MaterialTheme.colorScheme.background
         )
     }
 
     Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             AnimatedVisibility(
                 visible = uiState.isBatchMode && uiState.selectedPhotos.isNotEmpty(),
@@ -122,26 +109,20 @@ fun ReviewScreen(
                 FloatingActionButton(
                     onClick = {
                         val selected = uiState.photos.filter { it.id in uiState.selectedPhotos }
-                        if (selected.isNotEmpty()) {
-                            pendingDeletePhotos = selected
-                            isPendingBatchDelete = true
-                            showDeleteConfirmDialog = true
-                        }
+                        pendingDeletePhotos = selected
+                        isPendingBatchDelete = true
+                        showDeleteConfirmDialog = selected.isNotEmpty()
                     },
                     containerColor = RedAccent,
-                    contentColor = Color.White,
-                    shape = RoundedCornerShape(16.dp)
+                    contentColor = Color.White
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = 16.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Icon(Icons.Default.Delete, contentDescription = "删除选中")
-                        Text(
-                            "${uiState.selectedPhotos.size}",
-                            fontWeight = FontWeight.Bold
-                        )
+                        Icon(Icons.Default.Delete, contentDescription = null)
+                        Text("${uiState.selectedPhotos.size}", fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -154,172 +135,70 @@ fun ReviewScreen(
                 .background(Brush.verticalGradient(colors = gradientColors))
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
-                // Top bar with animation
-                if (isVisible) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 12.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(40.dp)
-                                    .clip(CircleShape)
-                                    .background(BlueAccent.copy(alpha = 0.2f)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Search,
-                                    contentDescription = null,
-                                    tint = BlueAccent,
-                                    modifier = Modifier.size(20.dp)
-                                )
+                ReviewHeader(
+                    uiState = uiState,
+                    isGridView = isGridView,
+                    onToggleView = { isGridView = !isGridView },
+                    onToggleBatchMode = { viewModel.toggleBatchMode() },
+                    onSelectAll = { viewModel.selectAll() },
+                    onDeselectAll = { viewModel.deselectAll() }
+                )
+
+                ReviewFilterRow(
+                    selected = uiState.filter,
+                    onSelect = { viewModel.setFilter(it) }
+                )
+
+                ReviewSummary(
+                    uiState = uiState,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+
+                Box(modifier = Modifier.fillMaxSize()) {
+                    when {
+                        uiState.isLoading -> {
+                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                ModernLoadingIndicator(color = BlueAccent)
                             }
-                            Text(
-                                text = "照片审查",
-                                style = MaterialTheme.typography.titleLarge,
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold
-                            )
                         }
-                        Row {
-                            // Grid/Tinder view switch toggle is disabled when SIMILAR view is active
-                            if (uiState.filter != FilterType.SIMILAR) {
-                                IconButton(onClick = { isGridView = !isGridView }) {
-                                    Icon(
-                                        if (isGridView) Icons.Default.Style else Icons.Default.GridView,
-                                        contentDescription = if (isGridView) "切换为卡片" else "切换为网格",
-                                        tint = Color.White
+
+                        uiState.filter == FilterType.SIMILAR -> {
+                            if (uiState.similarGroups.isEmpty()) {
+                                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                    ModernEmptyState(
+                                        icon = Icons.Default.CheckCircle,
+                                        title = "没有相似照片",
+                                        subtitle = "当前没有发现连续拍摄或内容非常接近的照片"
                                     )
                                 }
-                            }
-                            if (uiState.isBatchMode && uiState.filter != FilterType.SIMILAR) {
-                                IconButton(onClick = { viewModel.selectAll() }) {
-                                    Icon(Icons.Default.SelectAll, "全选", tint = BlueAccent)
-                                }
-                                IconButton(onClick = { viewModel.deselectAll() }) {
-                                    Icon(Icons.Default.Deselect, "取消全选", tint = Color.White)
-                                }
-                            }
-                            if (uiState.filter != FilterType.SIMILAR) {
-                                IconButton(onClick = { viewModel.toggleBatchMode() }) {
-                                    Icon(
-                                        if (uiState.isBatchMode) Icons.Default.Close else Icons.Default.Checklist,
-                                        contentDescription = if (uiState.isBatchMode) "退出批量" else "批量模式",
-                                        tint = if (uiState.isBatchMode) RedAccent else Color.White
-                                    )
+                            } else {
+                                LazyColumn(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+                                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    items(uiState.similarGroups, key = { group -> group.firstOrNull()?.id ?: group.hashCode() }) { group ->
+                                        SimilarGroupCard(
+                                            group = group,
+                                            onKeepBest = { viewModel.keepBestInGroup(group) },
+                                            onPhotoClick = { viewModel.showDetail(it) }
+                                        )
+                                    }
                                 }
                             }
                         }
-                    }
-                }
 
-                // Filter chips
-                if (isVisible) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        FilterType.entries.forEach { filter ->
-                            val isSelected = uiState.filter == filter
-                            val color = when (filter) {
-                                FilterType.ALL -> BlueAccent
-                                FilterType.SIMILAR -> YellowAccent
-                                FilterType.LARGE -> Purple80
-                                FilterType.USELESS -> RedAccent
-                                FilterType.UNCERTAIN -> Color(0xFFFF9800)
-                                FilterType.KEEP -> GreenAccent
-                            }
-                            FilterChip(
-                                selected = isSelected,
-                                onClick = { viewModel.setFilter(filter) },
-                                label = { 
-                                    Text(
-                                        filter.displayName,
-                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-                                    ) 
-                                },
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = color.copy(alpha = 0.3f),
-                                    selectedLabelColor = color,
-                                    containerColor = DarkSurface.copy(alpha = 0.6f),
-                                    labelColor = Color.White.copy(alpha = 0.7f)
-                                ),
-                                shape = RoundedCornerShape(20.dp)
-                            )
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Photo count label
-                if (isVisible) {
-                    val countText = if (uiState.filter == FilterType.SIMILAR) {
-                        "共发现 ${uiState.similarGroups.size} 组相似照片"
-                    } else {
-                        "共 ${uiState.photos.size} 张照片"
-                    }
-                    Text(
-                        text = countText,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.White.copy(alpha = 0.6f),
-                        modifier = Modifier.padding(horizontal = 16.dp)
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Content Area
-                if (isVisible) {
-                    if (uiState.isLoading) {
-                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            ModernLoadingIndicator(color = BlueAccent)
-                        }
-                    } else if (uiState.filter == FilterType.SIMILAR) {
-                        // SIMILAR DUPLICATES GROUPING VIEW
-                        if (uiState.similarGroups.isEmpty()) {
+                        uiState.photos.isEmpty() -> {
                             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                                 ModernEmptyState(
                                     icon = Icons.Default.CheckCircle,
-                                    title = "没有相似照片",
-                                    subtitle = "您的相册非常整洁，未发现连拍或相似的废片"
+                                    title = "当前分类为空",
+                                    subtitle = "换个筛选看看，或者先去扫描新照片"
                                 )
                             }
-                        } else {
-                            LazyColumn(
-                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-                                verticalArrangement = Arrangement.spacedBy(16.dp),
-                                modifier = Modifier.fillMaxSize()
-                            ) {
-                                items(uiState.similarGroups, key = { group -> group.firstOrNull()?.id ?: group.hashCode() }) { group ->
-                                    SimilarGroupCard(
-                                        group = group,
-                                        onKeepBest = { viewModel.keepBestInGroup(group) },
-                                        onPhotoClick = { viewModel.showDetail(it) }
-                                    )
-                                }
-                            }
                         }
-                    } else if (uiState.photos.isEmpty()) {
-                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            ModernEmptyState(
-                                icon = Icons.Default.CheckCircle,
-                                title = "太棒了！",
-                                subtitle = "当前分类下没有照片"
-                            )
-                        }
-                    } else {
-                        if (isGridView) {
-                            // Grid view
+
+                        isGridView -> {
                             LazyVerticalGrid(
                                 columns = GridCells.Fixed(3),
                                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
@@ -327,123 +206,54 @@ fun ReviewScreen(
                                 verticalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
                                 items(uiState.photos, key = { it.id }) { photo ->
-                                    val onToggleSelection = remember(photo.id) { { viewModel.toggleSelection(photo.id) } }
-                                    val onDelete = remember(photo.id) { {
-                                        pendingDeletePhotos = listOf(photo)
-                                        showDeleteConfirmDialog = true
-                                    } }
-                                    val onKeep = remember(photo.id) { { viewModel.keepPhoto(photo) } }
-                                    val onClick = remember(photo.id) { { viewModel.showDetail(photo) } }
-    
                                     PhotoCard(
                                         photo = photo,
                                         isBatchMode = uiState.isBatchMode,
                                         isSelected = photo.id in uiState.selectedPhotos,
-                                        onToggleSelection = onToggleSelection,
-                                        onDelete = onDelete,
-                                        onKeep = onKeep,
-                                        onClick = onClick
+                                        onToggleSelection = { viewModel.toggleSelection(photo.id) },
+                                        onDelete = {
+                                            pendingDeletePhotos = listOf(photo)
+                                            isPendingBatchDelete = false
+                                            showDeleteConfirmDialog = true
+                                        },
+                                        onKeep = { viewModel.keepPhoto(photo) },
+                                        onClick = { viewModel.showDetail(photo) }
                                     )
                                 }
                             }
-                        } else {
-                            // Gamified swipe card UI
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(bottom = 80.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                val topPhoto = uiState.photos.first()
-                                
-                                if (uiState.photos.size > 1) {
-                                    val nextPhoto = uiState.photos[1]
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .padding(32.dp)
-                                            .scale(0.95f)
-                                            .clip(RoundedCornerShape(24.dp))
-                                            .background(DarkSurfaceVariant.copy(alpha = 0.5f))
-                                    ) {
-                                        AsyncImage(
-                                            model = ImageRequest.Builder(LocalContext.current)
-                                                .data(nextPhoto.uri)
-                                                .crossfade(true)
-                                                .build(),
-                                            contentDescription = null,
-                                            modifier = Modifier.fillMaxSize(),
-                                            contentScale = ContentScale.Crop,
-                                            alpha = 0.5f
-                                        )
-                                    }
-                                }
- 
-                                SwipeablePhotoCard(
-                                    photo = topPhoto,
-                                    onSwipedLeft = {
-                                        viewModel.deletePhoto(topPhoto)
-                                    },
-                                    onSwipedRight = {
-                                        viewModel.keepPhoto(topPhoto)
-                                    }
-                                )
-                            }
+                        }
+
+                        else -> {
+                            ReviewSwipeContent(
+                                photos = uiState.photos,
+                                onDelete = { photo ->
+                                    pendingDeletePhotos = listOf(photo)
+                                    isPendingBatchDelete = false
+                                    showDeleteConfirmDialog = true
+                                },
+                                onKeep = { viewModel.keepPhoto(it) }
+                            )
                         }
                     }
                 }
             }
 
-            // Undo Snackbar
-            AnimatedVisibility(
-                visible = uiState.showUndo,
-                enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
-                exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
+            ReviewPendingDeleteBanner(
+                uiState = uiState,
+                onUndo = { viewModel.undoDelete() },
+                onCommit = { viewModel.commitPendingDeletes() },
                 modifier = Modifier.align(Alignment.BottomCenter)
-            ) {
-                Card(
-                    modifier = Modifier
-                        .padding(16.dp)
-                        .fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = DarkSurfaceVariant),
-                    shape = RoundedCornerShape(16.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(16.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Delete,
-                                contentDescription = null,
-                                tint = RedAccent
-                            )
-                            Text(
-                                text = "已标记 ${uiState.lastDeletedPhotos.size} 张照片",
-                                color = Color.White,
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                        }
-                        TextButton(onClick = { viewModel.undoDelete() }) {
-                            Text("撤销", color = BlueAccent, fontWeight = FontWeight.Bold)
-                        }
-                    }
-                }
-            }
+            )
         }
     }
 
-    // Detail Dialog
     uiState.detailPhoto?.let { photo ->
         PhotoDetailDialog(
             photo = photo,
             onDismiss = { viewModel.hideDetail() },
             onDelete = {
                 pendingDeletePhotos = listOf(photo)
+                isPendingBatchDelete = false
                 showDeleteConfirmDialog = true
                 viewModel.hideDetail()
             },
@@ -454,7 +264,6 @@ fun ReviewScreen(
         )
     }
 
-    // Delete confirmation dialog (only for batch grid delete)
     if (showDeleteConfirmDialog && pendingDeletePhotos.isNotEmpty()) {
         DeleteConfirmDialog(
             count = pendingDeletePhotos.size,
@@ -478,6 +287,264 @@ fun ReviewScreen(
 }
 
 @Composable
+private fun ReviewHeader(
+    uiState: ReviewUiState,
+    isGridView: Boolean,
+    onToggleView: () -> Unit,
+    onToggleBatchMode: () -> Unit,
+    onSelectAll: () -> Unit,
+    onDeselectAll: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(BlueAccent.copy(alpha = 0.18f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Default.Preview, contentDescription = null, tint = BlueAccent, modifier = Modifier.size(20.dp))
+            }
+            Column {
+                Text("照片审查", style = MaterialTheme.typography.titleLarge, color = Color.White, fontWeight = FontWeight.Bold)
+                Text(
+                    if (uiState.isBatchMode) "批量模式已开启" else "逐张确认保留或删除",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.White.copy(alpha = 0.6f)
+                )
+            }
+        }
+
+        Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+            if (uiState.filter != FilterType.SIMILAR) {
+                IconButton(onClick = onToggleView) {
+                    Icon(
+                        imageVector = if (isGridView) Icons.Default.Style else Icons.Default.GridView,
+                        contentDescription = null,
+                        tint = Color.White
+                    )
+                }
+            }
+            if (uiState.isBatchMode && uiState.filter != FilterType.SIMILAR) {
+                IconButton(onClick = onSelectAll) {
+                    Icon(Icons.Default.SelectAll, contentDescription = null, tint = BlueAccent)
+                }
+                IconButton(onClick = onDeselectAll) {
+                    Icon(Icons.Default.ClearAll, contentDescription = null, tint = Color.White)
+                }
+            }
+            if (uiState.filter != FilterType.SIMILAR) {
+                IconButton(onClick = onToggleBatchMode) {
+                    Icon(
+                        imageVector = if (uiState.isBatchMode) Icons.Default.Close else Icons.Default.Checklist,
+                        contentDescription = null,
+                        tint = if (uiState.isBatchMode) RedAccent else Color.White
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ReviewFilterRow(
+    selected: FilterType,
+    onSelect: (FilterType) -> Unit
+) {
+    LazyRow(
+        modifier = Modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        items(
+            items = FilterType.entries.toList(),
+            key = { it.name }
+        ) { filter ->
+            val color = when (filter) {
+                FilterType.ALL -> BlueAccent
+                FilterType.SIMILAR -> YellowAccent
+                FilterType.LARGE -> Purple80
+                FilterType.USELESS -> RedAccent
+                FilterType.UNCERTAIN -> Color(0xFFFF9800)
+                FilterType.KEEP -> GreenAccent
+            }
+            FilterChip(
+                selected = selected == filter,
+                onClick = { onSelect(filter) },
+                label = { Text(filter.displayName) },
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = color.copy(alpha = 0.24f),
+                    selectedLabelColor = color,
+                    containerColor = DarkSurface.copy(alpha = 0.55f),
+                    labelColor = Color.White.copy(alpha = 0.75f)
+                )
+            )
+        }
+    }
+}
+
+@Composable
+private fun ReviewSummary(
+    uiState: ReviewUiState,
+    modifier: Modifier = Modifier
+) {
+    GlassCard(modifier = modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column {
+                Text(
+                    text = when (uiState.filter) {
+                        FilterType.SIMILAR -> "相似组"
+                        else -> "当前结果"
+                    },
+                    style = MaterialTheme.typography.labelMedium,
+                    color = Color.White.copy(alpha = 0.55f)
+                )
+                Text(
+                    text = if (uiState.filter == FilterType.SIMILAR) {
+                        "${uiState.similarGroups.size} 组"
+                    } else {
+                        "${uiState.photos.size} 张"
+                    },
+                    style = MaterialTheme.typography.titleMedium,
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            if (uiState.isBatchMode) {
+                Text(
+                    text = "已选 ${uiState.selectedPhotos.size}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = BlueAccent,
+                    fontWeight = FontWeight.Bold
+                )
+            } else if (uiState.lastDeletedPhotos.isNotEmpty()) {
+                Text(
+                    text = "待提交 ${uiState.lastDeletedPhotos.size}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = YellowAccent,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ReviewSwipeContent(
+    photos: List<Photo>,
+    onDelete: (Photo) -> Unit,
+    onKeep: (Photo) -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(bottom = 96.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        val topPhoto = photos.first()
+        if (photos.size > 1) {
+            val nextPhoto = photos[1]
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 28.dp, vertical = 24.dp)
+                    .scale(0.96f)
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(DarkSurfaceVariant.copy(alpha = 0.45f))
+            ) {
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(nextPhoto.uri)
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,
+                    alpha = 0.48f
+                )
+            }
+        }
+
+        SwipeablePhotoCard(
+            photo = topPhoto,
+            onSwipedLeft = { onDelete(topPhoto) },
+            onSwipedRight = { onKeep(topPhoto) }
+        )
+    }
+}
+
+@Composable
+private fun ReviewPendingDeleteBanner(
+    uiState: ReviewUiState,
+    onUndo: () -> Unit,
+    onCommit: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    AnimatedVisibility(
+        visible = uiState.showUndo || uiState.lastDeletedPhotos.isNotEmpty(),
+        enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+        exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
+        modifier = modifier.padding(16.dp)
+    ) {
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = DarkSurfaceVariant),
+            shape = RoundedCornerShape(16.dp)
+        ) {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = if (uiState.showUndo) Icons.Default.Delete else Icons.Default.Warning,
+                        contentDescription = null,
+                        tint = if (uiState.showUndo) RedAccent else YellowAccent
+                    )
+                    Text(
+                        text = if (uiState.showUndo) {
+                            "已标记 ${uiState.lastDeletedPhotos.size} 张照片"
+                        } else {
+                            "待提交 ${uiState.lastDeletedPhotos.size} 张到系统回收站"
+                        },
+                        color = Color.White,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TextButton(onClick = onUndo) {
+                        Text("撤销", color = BlueAccent, fontWeight = FontWeight.Bold)
+                    }
+                    if (!uiState.showUndo && uiState.lastDeletedPhotos.isNotEmpty()) {
+                        Button(
+                            onClick = onCommit,
+                            colors = ButtonDefaults.buttonColors(containerColor = RedAccent)
+                        ) {
+                            Text("提交删除")
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
 fun SimilarGroupCard(
     group: List<Photo>,
     onKeepBest: () -> Unit,
@@ -497,59 +564,24 @@ fun SimilarGroupCard(
         } ?: group.first()
     }
 
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = DarkSurfaceVariant.copy(alpha = 0.5f)),
-        shape = RoundedCornerShape(20.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.05f))
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+    GlassCard(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(8.dp)
-                            .clip(CircleShape)
-                            .background(YellowAccent)
-                    )
-                    Text(
-                        text = "相似图片组 (${group.size}张)",
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold,
-                        style = MaterialTheme.typography.titleMedium
-                    )
+                Column {
+                    Text("相似照片组", color = Color.White, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                    Text("${group.size} 张候选", color = Color.White.copy(alpha = 0.55f), style = MaterialTheme.typography.bodySmall)
                 }
-
-                Button(
-                    onClick = onKeepBest,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = BlueAccent.copy(alpha = 0.2f),
-                        contentColor = BlueAccent
-                    ),
-                    shape = RoundedCornerShape(12.dp),
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-                    modifier = Modifier.height(32.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.AutoAwesome,
-                        contentDescription = null,
-                        modifier = Modifier.size(14.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("保留最佳", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                OutlinedButton(onClick = onKeepBest) {
+                    Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("保留最佳")
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Horizontal scrolling similar photos
             androidx.compose.foundation.lazy.LazyRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.fillMaxWidth()
@@ -557,7 +589,7 @@ fun SimilarGroupCard(
                 items(group) { photo ->
                     Box(
                         modifier = Modifier
-                            .size(100.dp)
+                            .size(108.dp)
                             .clip(RoundedCornerShape(12.dp))
                             .background(DarkBackground)
                             .clickable { onPhotoClick(photo) }
@@ -573,36 +605,19 @@ fun SimilarGroupCard(
                         )
 
                         if (photo.id == bestPhoto.id) {
-                            Box(
+                            Surface(
                                 modifier = Modifier
                                     .align(Alignment.TopEnd)
-                                    .padding(4.dp)
-                                    .background(GreenAccent, RoundedCornerShape(4.dp))
-                                    .padding(horizontal = 4.dp, vertical = 2.dp)
+                                    .padding(6.dp),
+                                color = GreenAccent,
+                                shape = RoundedCornerShape(6.dp)
                             ) {
                                 Text(
                                     text = "最佳",
                                     color = Color.White,
-                                    fontSize = 8.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                        }
-
-                        if (photo.localReason.contains("模糊")) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .background(Color.Black.copy(alpha = 0.6f))
-                                    .align(Alignment.BottomCenter)
-                                    .padding(vertical = 2.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = "模糊",
-                                    color = RedAccent,
-                                    fontSize = 8.sp,
-                                    fontWeight = FontWeight.Bold
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
                                 )
                             }
                         }
@@ -641,7 +656,6 @@ fun PhotoDetailDialog(
                 contentScale = ContentScale.Fit
             )
 
-            // Top bar
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -651,33 +665,30 @@ fun PhotoDetailDialog(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(onClick = onDismiss) {
-                    Icon(Icons.Default.Close, "关闭", tint = Color.White)
+                    Icon(Icons.Default.Close, contentDescription = "关闭", tint = Color.White)
                 }
                 Text(
                     text = photo.displayName,
                     style = MaterialTheme.typography.titleMedium,
-                    color = Color.White
+                    color = Color.White,
+                    maxLines = 1
                 )
                 Spacer(modifier = Modifier.width(48.dp))
             }
 
-            // Bottom info and actions
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .align(Alignment.BottomCenter)
                     .background(
                         Brush.verticalGradient(
-                            colors = listOf(
-                                Color.Transparent,
-                                Color.Black.copy(alpha = 0.8f)
-                            )
+                            colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.82f))
                         )
                     )
                     .navigationBarsPadding()
-                    .padding(16.dp)
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Photo info
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly
@@ -693,29 +704,14 @@ fun PhotoDetailDialog(
                                 else -> Color.Gray
                             }
                         )
-                        Text(
-                            text = "${(photo.confidence * 100).toInt()}%",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Color.White.copy(alpha = 0.7f)
-                        )
+                        Text("${(photo.confidence * 100).toInt()}%", style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.7f))
                     }
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            text = "${photo.width}×${photo.height}",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = Color.White
-                        )
-                        Text(
-                            text = com.photocleaner.util.ImageUtils.formatFileSize(photo.size),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Color.White.copy(alpha = 0.7f)
-                        )
+                        Text("${photo.width}×${photo.height}", style = MaterialTheme.typography.bodyMedium, color = Color.White)
+                        Text(com.photocleaner.util.ImageUtils.formatFileSize(photo.size), style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.7f))
                     }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Action buttons
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -724,11 +720,9 @@ fun PhotoDetailDialog(
                         onClick = onKeep,
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = GreenAccent
-                        )
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = GreenAccent)
                     ) {
-                        Icon(Icons.Default.Check, null)
+                        Icon(Icons.Default.Check, contentDescription = null)
                         Spacer(modifier = Modifier.width(4.dp))
                         Text("保留")
                     }
@@ -738,7 +732,7 @@ fun PhotoDetailDialog(
                         colors = ButtonDefaults.buttonColors(containerColor = RedAccent),
                         shape = RoundedCornerShape(12.dp)
                     ) {
-                        Icon(Icons.Default.Delete, null)
+                        Icon(Icons.Default.Delete, contentDescription = null)
                         Spacer(modifier = Modifier.width(4.dp))
                         Text("删除")
                     }
@@ -766,17 +760,12 @@ fun DeleteConfirmDialog(
                     .background(RedAccent.copy(alpha = 0.15f)),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = Icons.Default.Warning,
-                    contentDescription = null,
-                    tint = RedAccent,
-                    modifier = Modifier.size(32.dp)
-                )
+                Icon(Icons.Default.Warning, contentDescription = null, tint = RedAccent, modifier = Modifier.size(32.dp))
             }
         },
         title = {
             Text(
-                text = "⚠️ 确认删除",
+                text = "确认删除",
                 style = MaterialTheme.typography.titleLarge,
                 color = Color.White,
                 fontWeight = FontWeight.Bold,
@@ -791,13 +780,13 @@ fun DeleteConfirmDialog(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Text(
-                    text = "即将删除 $count 张照片",
+                    text = "即将标记 $count 张照片",
                     style = MaterialTheme.typography.bodyLarge,
                     color = Color.White,
                     fontWeight = FontWeight.Medium
                 )
                 Text(
-                    text = "删除后仍可在回收站中恢复。",
+                    text = "确认后会先进入待提交状态，随后由系统回收站完成删除。",
                     style = MaterialTheme.typography.bodyMedium,
                     color = YellowAccent,
                     textAlign = TextAlign.Center
@@ -810,9 +799,9 @@ fun DeleteConfirmDialog(
                 colors = ButtonDefaults.buttonColors(containerColor = RedAccent),
                 shape = RoundedCornerShape(12.dp)
             ) {
-                Icon(Icons.Default.Delete, null, modifier = Modifier.size(18.dp))
+                Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(4.dp))
-                Text("确认删除", fontWeight = FontWeight.Bold)
+                Text("确认")
             }
         },
         dismissButton = {

@@ -15,7 +15,6 @@ interface PhotoRepository {
     suspend fun scanPhotos(): List<Photo>
     suspend fun scanPhotos(selectedDirectories: Set<String>): List<Photo>
     suspend fun discoverDirectories(): List<DirectoryInfo>
-    suspend fun classifyPhoto(photo: Photo): Photo
     suspend fun updateClassification(photoId: Long, classification: Classification, confidence: Float, category: String)
     suspend fun deletePhotos(photos: List<Photo>)
     suspend fun restorePhotos(photos: List<Photo>)

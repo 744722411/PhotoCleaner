@@ -1,158 +1,121 @@
-# PhotoCleaner - AI 照片清理助手
+# PhotoCleaner - 本地照片清理助手
 
 ---
 
-> ## ⚠️ 免责声明 / DISCLAIMER ⚠️
+> ## 免责声明
 >
-> **这是一个个人兴趣项目 / This is a personal hobby project**
+> 这是一个个人兴趣项目，不是商业产品。
 >
-> - **非商业产品** / NOT a commercial product
-> - **开发者不对任何数据丢失负责** / The developer is NOT responsible for any data loss
-> - **使用前必须备份所有重要照片** / Users MUST backup all important photos before using this tool
-> - **所有删除操作请仔细确认后再执行** / All delete operations should be reviewed carefully before confirming
-> - **使用风险自负** / Use at your own risk
-> - **使用本应用即表示您已知悉并接受以上条款** / By using this app you acknowledge and accept these terms
->
-> 📸 **请在使用前备份您的珍贵照片！**
+> - 使用前请先备份重要照片。
+> - 所有清理和删除操作都应仔细确认。
+> - 开发者不对任何数据丢失负责。
+> - 使用风险自负。
 
 ---
 
-## 📱 应用介绍
+## 应用介绍
 
-**PhotoCleaner** 是一款运行在 Android 端、基于 AI 与感知哈希算法的智能照片清理工具。它可以帮助您快速识别并清理设备中无用的、严重模糊的、曝光失误的废片，以及视觉上高度重复的相似连拍照片。
+PhotoCleaner 是一款 Android 本地照片清理助手。它可以扫描你选择的相册目录，在设备端检测明显模糊、低质量、截图/票据类、可能无用的照片，并通过 dHash 将视觉上相近的照片聚合成相似组，最后交给你在审查页逐项确认。
 
-通过引入本地轻量化检测（模糊度、空白度、文档识别）与云端高阶 AI 语义分类，PhotoCleaner 能够智能化评估每一张照片的保留价值，并通过灵动解压的“飞卡”手势及分组卡片，为您带来极致流畅的照片整理体验。
+从 v1.7.0 开始，项目彻底移除了远程 AI / OpenAI 兼容分类链路。应用不再保存 API Key，不再包含 Retrofit / OkHttp / Moshi 网络分类代码，并在 Manifest 中显式移除 `INTERNET` 权限。
 
----
+## v1.7.0 更新
 
-## 📢 最新更新 (v1.6.0)
+- 扫描和检测流程完全本地化。
+- 移除 OpenAI 兼容 API 设置、API Key 存储、网络客户端、DTO 和远程分类用例。
+- 设置页改为展示本地处理和离线隐私状态。
+- 首页、扫描页和设置页文案统一为本地处理语义。
+- Manifest 显式移除 `android.permission.INTERNET`。
+- 保留审查页、5 秒撤销、批量删除和 Android 11+ 系统回收站提交能力。
 
-本版本对系统特性进行了深度适配，并进行了一次全面的安全性与性能优化审计：
+## 功能特性
 
-*   **♻️ Android 11+ 系统回收站对接**：适配 `MediaStore.createTrashRequest`，删除时直接移入系统回收站，完美兼容低版本备份逻辑，拒绝空间二次占用。
-*   **⏳ 5 秒延迟撤销机制**：删除时本地 Room 拦截并隐去照片，提供 5 秒极简撤销 Snackbar。**全程无系统弹窗打扰**，页面关闭或倒计时结束时一次性发起批量系统授权，交互手感行云流水。
-*   **📊 本地 dHash 相似/重复照片聚合**：采用 64 位感知差分哈希（dHash）指纹，自动将 10 分钟内且汉明距离 ≤ 5 的相片聚合成“相似组”，并支持依据“模糊度 > 分辨率 > 文件体积”一键智能“保留最佳”。
-*   **🛡️ Android 14+ 部分授权增量引导**：精准检测 `READ_MEDIA_VISUAL_USER_SELECTED` 部分授权状态，首页顶部增设醒目引导横幅，支持一键追加勾选新照片。
-*   **🎨 Material You 动态色彩渐变背景**：全面重构页面背景，色彩自动吸附并融合用户系统的 Material You 壁纸主题色。
-*   **📳 解压级触觉手势反馈**：适配 Android 12+，在卡片滑动越过删除/保留临界线及飞出时，触发精致的定制微物理振动。
-*   **⚡ 核心稳定性与性能修复**：
-    *   **ANR 规避**：将 $O(N^2)$ 的相似图片聚合运算移出主线程（切至 `Dispatchers.Default`），大相册亦绝不卡死。
-    *   **手势流畅度提升**：改用平铺 State 承接滑动位移，彻底消除在 drag 手势中高频 launch 协程造成的内存抖动与 GC 卡顿。
-    *   **防止闪退**：对 API 基准地址（Base URL）进行强格式验证并套入异常防护网，杜绝不合规输入引起的无限闪退；补齐 `MIGRATION_2_3` 防止旧版升级时清空历史数据。
-    *   **句柄泄露防范**：重构 EXIF 读取和图片本地检测的流逻辑，用 `.use {}` 保证输入流在异常情况下绝对被物理关闭。
+- 本地模糊、截图、票据/文档、低质量照片检测。
+- 自动发现相册目录，并支持选择扫描范围。
+- 增量扫描，重复扫描时优先处理新照片。
+- dHash 相似照片聚合。
+- 网格审查和滑动卡片审查。
+- 批量选择、删除确认和短时间撤销。
+- Android 11+ 使用 `MediaStore.createTrashRequest` 提交到系统回收站。
+- Material 3 深色界面、现代卡片和扫描日志。
 
----
+## 权限与隐私
 
-## ✨ 功能特性
+PhotoCleaner 只需要读取照片/媒体权限来扫描本地相册，不请求网络权限。
 
-*   **🤖 AI 照片分类**：自动将照片归类为“建议清理（Useless）”、“保留（Keep）”及“待定审查（Uncertain）”。
-*   **📊 置信度评分**：直观展示 AI 对照片分类的置信度百分比。
-*   **🔍 沉浸式审查**：支持左右滑动的“Tinder 飞卡”模式以及传统的大图浏览，无缝集成触觉震动反馈。
-*   **☑️ 批量操作**：网格视图下可一键全选或多选进行批量标记。
-*   **🗑️ 安全删除防护**：物理删除前必须进行二次弹窗确认，且支持 Android 11+ 原生系统回收站的跨版本安全撤销。
-*   **📂 智能目录过滤**：自动发现并过滤无意义的系统图标、Emoji 表情、缓存垃圾文件夹，只专注于用户相册。
+Manifest 相关行为：
 
----
+- Android 13+ 使用 `READ_MEDIA_IMAGES`。
+- Android 14+ 使用 `READ_MEDIA_VISUAL_USER_SELECTED` 适配部分照片访问。
+- Android 12 及以下使用 `READ_EXTERNAL_STORAGE`。
+- 显式移除 `INTERNET` 以及其他依赖可能合并进来的无关权限。
 
-## 🚀 使用方法
+## 使用方法
 
-1.  **安装**：下载并安装 APK 文件的（要求 Android 8.0/API 26 及以上系统）。
-2.  **授权**：首次打开时，根据系统提示授予媒体文件读取权限。在 Android 13+ 系统上，请一并允许通知发送以展示扫描进度。
-3.  **扫描配置**：在首页点击“开始扫描”跳转至扫描设置：
-    *   在目录列表中勾选你想要分析的相册文件夹。
-    *   选择每次处理的单批次照片数量（默认 100 张）。
-    *   点击“开始扫描”，前台服务会接管并在通知栏实时显示检测日志。
-4.  **审查与清理**：
-    *   🔴 **建议清理 (Useless)**：主要是空白照、拍摄抖动的模糊废片、镜头误触的黑色误拍，可安全右滑保留或左滑/批量一键清理。
-    *   🟡 **人工审查 (Uncertain)**：主要包括截图、收据发票、二维码等可能临时有用但容易积压的照片，方便您核对后整理。
-    *   🟢 **保留 (Keep)**：个人生活照、风景照等，建议珍藏。
-5.  **撤销操作**：误删了照片？在底部的 Snackbar 消失前（5 秒内）点击“撤销”可瞬间回滚。
-6.  **高级设置**：如果希望开启云端高阶 AI 分析，可前往“高级设置”中配置你个人的 OpenAI 兼容 API Key、Base URL 及模型名称（如 `gpt-4o-mini`），非必填，留空将默认使用本地规则引擎。
+1. 在 Android 8.0+ 设备上安装 APK。
+2. 根据系统提示授权照片/媒体读取权限。
+3. 进入“扫描”，选择要处理的目录和单批处理数量。
+4. 开始扫描，查看本地处理日志。
+5. 进入“审查”，按建议清理、人工审查、保留、相似照片等视图逐项确认。
+6. 删除前会二次确认；撤销窗口结束后，可提交到系统回收站。
 
----
+## 技术栈
 
-## 🛠️ 技术栈
+| 组件 | 技术 |
+|------|------|
+| 开发语言 | Kotlin 2.3.21 |
+| UI 框架 | Jetpack Compose + Material 3 |
+| 架构 | MVVM + Clean Architecture |
+| 依赖注入 | Hilt 2.59.2 |
+| 数据库 | Room 2.8.4 |
+| 图片加载 | Coil 3.4.0 |
+| 导航 | Navigation Compose 2.9.8 |
+| 本地 ML | ML Kit Image Labeling |
+| 偏好设置 | DataStore Preferences |
+| 最低 SDK | 26 |
+| 目标 SDK | 36 |
 
-| 组件 | 所用技术 |
-| :--- | :--- |
-| **开发语言** | Kotlin 2.1.0 |
-| **UI 框架** | Jetpack Compose (Material 3) |
-| **架构设计** | MVVM + 干净架构 (Clean Architecture) |
-| **依赖注入** | Hilt 2.59.2 |
-| **数据持久化** | Room Database 2.8.4 |
-| **图片加载** | Coil 3.5.0 (支持 Kotlin Multiplatform 级别的跨端协程加载) |
-| **路由导航** | Navigation Compose 2.9.0 (全面启用 `@Serializable` 类型安全导航) |
-| **网络请求** | Retrofit 2.11.0 + OkHttp 4.12.0 |
-| **反序列化** | Moshi 1.15.1 (配合代码生成与自定义的多态适配器) |
-| **安全加密** | Androidx Security Crypto 1.1.0 (用于存储 API Key) |
-| **端侧算法** | ML Kit Image Labeling (识别文档票据) |
-| **最低支持** | SDK 26 (Android 8.0) |
-| **目标支持** | SDK 36 (Android 16) |
+## 构建说明
 
----
+前置要求：
 
-## 🔨 构建与开发说明
+- JDK 17
+- Android SDK API 36
+- 与当前 Android Gradle Plugin 兼容的构建环境
 
-### 前期准备
-*   JDK 17
-*   Android SDK (API 36)
-*   Gradle (项目已包含 gradlew 包装器)
-
-### 构建 Debug 测试包
-
-在项目根目录下，使用 Powershell / 终端执行：
+Debug 构建：
 
 ```bash
-# Windows
 .\gradlew.bat assembleDebug
-
-# macOS / Linux
-./gradlew assembleDebug
 ```
 
-生成的安装包位于：
-`app/build/outputs/apk/debug/app-debug.apk`
-
-### 构建 Release 正式包
+Release 构建：
 
 ```bash
-./gradlew assembleRelease
+.\gradlew.bat assembleRelease
 ```
-> 注：Release 正式包需要您在 `app/build.gradle.kts` 中配置相应的签名证书 (signingConfigs) 才能顺利完成编译。
 
----
+Release 包需要单独配置签名。
 
-## 📁 项目结构说明
+## 项目结构
 
-```
+```text
 app/src/main/
 ├── java/com/photocleaner/
-│   ├── di/                    # Hilt 依赖注入模块管理
-│   ├── domain/
-│   │   ├── model/             # 核心数据实体 (Photo, Classification)
-│   │   ├── repository/        # 仓库接口定义
-│   │   └── usecase/           # 独立业务逻辑用例层
 │   ├── data/
-│   │   ├── local/             # Room 本地持久化层 (Dao, Entities, Migrations)
-│   │   ├── remote/            # Retrofit 云端 AI 接口层 (Api, Services, DTO)
-│   │   └── repository/        # 仓库模式的具体实现 (PhotoRepositoryImpl)
-│   ├── service/               # 后台扫描前台服务 (ScanService)
-│   ├── ui/
-│   │   ├── components/        # 公用毛玻璃卡片、状态页、Badges 等微组件
-│   │   ├── navigation/        # 类型安全导航图 (NavGraph)
-│   │   ├── home/              # 首页总览
-│   │   ├── scan/              # 扫描与日志输出页
-│   │   ├── review/            # Tinder 卡片与相似聚合审查页
-│   │   ├── settings/          # AI 参数设置页
-│   │   ├── stats/             # 数据分析页
-│   │   └── theme/             # Material 3 动态色彩与字体排版配置
-│   └── util/                  # 差分哈希计算、模糊算法、权限引导等工具类
-├── res/
-│   ├── drawable/              # 矢量图标与渐变遮罩
-│   └── values/                # 本地化字符串与全局主题 definition
+│   │   ├── local/             # Room DAO、实体、数据库
+│   │   └── repository/        # 仓库实现
+│   ├── di/                    # Hilt 模块
+│   ├── domain/
+│   │   ├── model/             # Photo、Classification、DirectoryInfo
+│   │   ├── repository/        # 仓库接口
+│   │   └── usecase/           # 扫描/删除用例
+│   ├── service/               # 扫描状态持有器
+│   ├── ui/                    # 首页、扫描、审查、统计、设置
+│   └── util/                  # 图片、模糊、截图、权限工具
 └── AndroidManifest.xml
 ```
 
----
+## 许可
 
-*Built with ❤️ using Kotlin and Jetpack Compose*
+个人兴趣项目，不授权商业使用。

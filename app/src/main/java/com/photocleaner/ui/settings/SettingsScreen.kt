@@ -1,47 +1,55 @@
 package com.photocleaner.ui.settings
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.Security
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.TipsAndUpdates
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.photocleaner.ui.components.GlassCard
 import com.photocleaner.ui.components.ModernSectionHeader
-import com.photocleaner.ui.theme.*
+import com.photocleaner.ui.theme.BlueAccent
+import com.photocleaner.ui.theme.GreenAccent
+import com.photocleaner.ui.theme.YellowAccent
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    var apiKeyInput by remember(uiState.apiKey) { mutableStateOf(uiState.apiKey) }
-    var baseUrlInput by remember(uiState.baseUrl) { mutableStateOf(uiState.baseUrl) }
-    var modelInput by remember(uiState.model) { mutableStateOf(uiState.model) }
-
-    // Material You dynamic colors gradient background
-    val primaryColor = MaterialTheme.colorScheme.primary
-    val secondaryColor = MaterialTheme.colorScheme.secondaryContainer
-    val backgroundColor = MaterialTheme.colorScheme.background
-    val gradientColors = remember(primaryColor, secondaryColor, backgroundColor) {
+    val gradientColors = remember {
         listOf(
-            primaryColor.copy(alpha = 0.12f),
-            secondaryColor.copy(alpha = 0.08f),
-            backgroundColor
+            MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+            MaterialTheme.colorScheme.secondary.copy(alpha = 0.08f),
+            MaterialTheme.colorScheme.background
         )
     }
 
@@ -53,61 +61,126 @@ fun SettingsScreen(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item {
-            Spacer(modifier = Modifier.height(24.dp))
-            Text(
-                text = "设置",
-                style = MaterialTheme.typography.headlineLarge,
-                color = Color.White,
-                fontWeight = FontWeight.Bold
-            )
-            Text(
-                text = "管理应用配置与AI模型",
-                style = MaterialTheme.typography.bodyLarge,
-                color = Color.White.copy(alpha = 0.7f)
-            )
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(12.dp))
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    text = "设置",
+                    style = MaterialTheme.typography.headlineLarge,
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "本地扫描与隐私状态",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = Color.White.copy(alpha = 0.7f)
+                )
+            }
         }
 
         item {
-            GlassCard(
-                modifier = Modifier.fillMaxWidth()
-            ) {
+            GlassCard(modifier = Modifier.fillMaxWidth()) {
                 Column(
-                    modifier = Modifier.padding(24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                    modifier = Modifier.padding(20.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(64.dp)
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(GreenAccent.copy(alpha = 0.15f)),
-                        contentAlignment = Alignment.Center
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Security,
-                            contentDescription = null,
-                            tint = GreenAccent,
-                            modifier = Modifier.size(36.dp)
+                        ModernSectionHeader(title = "隐私保护", icon = Icons.Default.Security)
+                        StatusPill(
+                            text = if (uiState.networkDisabled) "离线" else "联网",
+                            color = if (uiState.networkDisabled) GreenAccent else YellowAccent
                         )
                     }
-                    Spacer(modifier = Modifier.height(20.dp))
-                    Text(
-                        text = "100% 离线隐私安全",
-                        style = MaterialTheme.typography.titleLarge,
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold,
-                        textAlign = TextAlign.Center
+
+                    SettingInfoRow(
+                        icon = Icons.Default.CheckCircle,
+                        iconColor = GreenAccent,
+                        title = "网络接口已移除",
+                        description = "应用不再保存联网配置，也不会调用网络分类服务。"
                     )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text(
-                        text = "应用已彻底停用并关闭了一切网络连接权限（INTERNET）。\n\n您的照片、感知哈希特征、清晰度扫描日志及所有数据完全在本地计算和运行。不上传任何服务器，不消耗流量，全力保护您的隐私。极其适合在无网飞机舱、户外等场景下安心使用。",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.White.copy(alpha = 0.7f),
-                        textAlign = TextAlign.Center,
-                        lineHeight = 22.sp
+                    SettingInfoRow(
+                        icon = Icons.Default.FolderOpen,
+                        iconColor = BlueAccent,
+                        title = "照片只在设备上处理",
+                        description = "目录扫描、清晰度判断、截图识别和相似检测都走本地逻辑。"
+                    )
+                    SettingInfoRow(
+                        icon = Icons.Default.TipsAndUpdates,
+                        iconColor = YellowAccent,
+                        title = "清理前仍需确认",
+                        description = "扫描结果会进入审查页，删除前可以逐张确认或撤销。"
                     )
                 }
             }
         }
+
+        item {
+            Surface(
+                color = GreenAccent.copy(alpha = 0.14f),
+                shape = RoundedCornerShape(14.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = "当前版本专注本地照片清理，不需要任何联网分类配置。",
+                    modifier = Modifier.padding(14.dp),
+                    color = GreenAccent,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SettingInfoRow(
+    icon: ImageVector,
+    iconColor: Color,
+    title: String,
+    description: String
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.Top
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = iconColor,
+            modifier = Modifier.size(22.dp)
+        )
+        Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Text(
+                text = title,
+                color = Color.White,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = description,
+                color = Color.White.copy(alpha = 0.68f),
+                style = MaterialTheme.typography.bodyMedium
+            )
+        }
+    }
+}
+
+@Composable
+private fun StatusPill(text: String, color: Color) {
+    Surface(
+        color = color.copy(alpha = 0.16f),
+        shape = RoundedCornerShape(50)
+    ) {
+        Text(
+            text = text,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+            color = color,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Bold
+        )
     }
 }

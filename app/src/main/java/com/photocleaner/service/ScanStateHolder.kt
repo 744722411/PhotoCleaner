@@ -11,8 +11,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Singleton that holds scan/classify state.
- * Both ScanService and ScanViewModel access this, so progress survives Activity destruction.
+ * Singleton that holds scan state so progress survives Activity destruction.
  */
 @Singleton
 class ScanStateHolder @Inject constructor() {

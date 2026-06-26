@@ -10,9 +10,9 @@ data class ScanLogEntry(
 
 enum class LogStatus {
     PROCESSING,  // Currently being processed
-    SUCCESS,     // AI analysis succeeded
+    SUCCESS,     // Local detection succeeded
     LOCAL_HIT,   // Local detection found issue
-    SKIP,        // Skipped (e.g. no API key)
+    SKIP,        // Skipped by local rules
     ERROR,       // Error occurred
     INFO         // General info message
 }
