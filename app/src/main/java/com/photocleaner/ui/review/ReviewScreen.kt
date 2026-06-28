@@ -1,4 +1,4 @@
-package com.photocleaner.ui.review
+﻿package com.photocleaner.ui.review
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -578,10 +578,19 @@ fun SimilarGroupCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column {
-                Text("相似照片组", color = Color.White, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
-                Text(stringResource(R.string.review_similar_candidates, group.size), color = Color.White.copy(alpha = 0.55f), style = MaterialTheme.typography.bodySmall)
+                    Text(
+                        text = stringResource(R.string.review_similar_group),
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Text(
+                        text = stringResource(R.string.review_similar_candidates, group.size),
+                        color = Color.White.copy(alpha = 0.55f),
+                        style = MaterialTheme.typography.bodySmall
+                    )
                 }
-                    OutlinedButton(onClick = onKeepBest) {
+                OutlinedButton(onClick = onKeepBest) {
                     Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(stringResource(R.string.review_keep_best))

@@ -69,6 +69,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.photocleaner.R
@@ -126,6 +128,12 @@ fun ScanScreen(
         )
     }
 
+    LaunchedEffect(Unit) {
+        if (uiState.discoveredDirectories.isEmpty() && !uiState.isDiscoveringDirs) {
+            viewModel.discoverDirectories()
+        }
+    }
+
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -146,6 +154,7 @@ fun ScanScreen(
                         onToggleDir = viewModel::toggleDirectory,
                         onSelectAll = viewModel::selectAllDirectories,
                         onDeselectAll = viewModel::deselectAllDirectories,
+                        onOpenPicker = viewModel::showDirectoryPicker,
                         onRefreshDirs = viewModel::discoverDirectories,
                         onBatchSizeChange = viewModel::setBatchSize,
                         onStartScan = { startScanOrRequestPermission() }
@@ -164,6 +173,23 @@ fun ScanScreen(
         }
         uiState.error?.let { error -> item { Surface(color = RedAccent.copy(alpha = 0.14f), shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) { Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) { Icon(Icons.Default.Error, contentDescription = null, tint = RedAccent); Text(error, color = RedAccent, style = MaterialTheme.typography.bodyMedium) } } } }
         if (uiState.scanLogs.isNotEmpty()) { item { ScanLogPanel(logs = uiState.scanLogs) } }
+    }
+
+    if (uiState.showDirectoryPicker) {
+        DirectoryPickerDialog(
+            directories = uiState.discoveredDirectories,
+            selectedDirectories = uiState.selectedDirectories,
+            isDiscovering = uiState.isDiscoveringDirs,
+            onToggleDir = viewModel::toggleDirectory,
+            onSelectAll = viewModel::selectAllDirectories,
+            onDeselectAll = viewModel::deselectAllDirectories,
+            onRefreshDirs = viewModel::discoverDirectories,
+            onDismiss = viewModel::hideDirectoryPicker,
+            onConfirm = {
+                viewModel.saveDirectories()
+                viewModel.hideDirectoryPicker()
+            }
+        )
     }
 }
 
@@ -244,6 +270,7 @@ fun ScanReadyContent(
     onToggleDir: (String) -> Unit,
     onSelectAll: () -> Unit,
     onDeselectAll: () -> Unit,
+    onOpenPicker: () -> Unit,
     onRefreshDirs: () -> Unit,
     onBatchSizeChange: (Int) -> Unit,
     onStartScan: () -> Unit
@@ -261,10 +288,80 @@ fun ScanReadyContent(
                 }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(onClick = onRefreshDirs) { Icon(Icons.Default.Refresh, contentDescription = null); Spacer(Modifier.width(8.dp)); Text(stringResource(R.string.scan_discover_dirs)) }
+                OutlinedButton(onClick = onOpenPicker) { Icon(Icons.Default.Refresh, contentDescription = null); Spacer(Modifier.width(8.dp)); Text(stringResource(R.string.scan_discover_dirs)) }
                 OutlinedButton(onClick = if (isAllSelected) onDeselectAll else onSelectAll, enabled = discoveredDirectories.isNotEmpty()) { Icon(if (isAllSelected) Icons.Default.CheckBoxOutlineBlank else Icons.Default.CheckBox, contentDescription = null); Spacer(Modifier.width(8.dp)); Text(if (isAllSelected) stringResource(R.string.scan_deselect_all) else stringResource(R.string.scan_select_all)) }
             }
-            Button(onClick = onStartScan, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Default.Search, contentDescription = null); Spacer(Modifier.width(8.dp)); Text(stringResource(R.string.scan_start)) }
+            Button(onClick = onStartScan, modifier = Modifier.fillMaxWidth(), enabled = selectedDirectories.isNotEmpty()) { Icon(Icons.Default.Search, contentDescription = null); Spacer(Modifier.width(8.dp)); Text(stringResource(R.string.scan_start)) }
+        }
+    }
+}
+@Composable
+private fun DirectoryPickerDialog(
+    directories: List<DirectoryInfo>,
+    selectedDirectories: Set<String>,
+    isDiscovering: Boolean,
+    onToggleDir: (String) -> Unit,
+    onSelectAll: () -> Unit,
+    onDeselectAll: () -> Unit,
+    onRefreshDirs: () -> Unit,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Surface(
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            shape = RoundedCornerShape(20.dp),
+            color = Color(0xFF10141C)
+        ) {
+            Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                Text(stringResource(R.string.scan_scope), style = MaterialTheme.typography.titleLarge, color = Color.White, fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.scan_scope_hint), style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.7f))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(onClick = onRefreshDirs) { Text(stringResource(R.string.scan_discover_dirs)) }
+                    OutlinedButton(onClick = onSelectAll, enabled = directories.isNotEmpty()) { Text(stringResource(R.string.scan_select_all)) }
+                    OutlinedButton(onClick = onDeselectAll, enabled = directories.isNotEmpty()) { Text(stringResource(R.string.scan_deselect_all)) }
+                }
+                if (isDiscovering && directories.isEmpty()) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = BlueAccent)
+                        Text(stringResource(R.string.scan_discovering), color = Color.White.copy(alpha = 0.8f))
+                    }
+                } else if (directories.isEmpty()) {
+                    Text(stringResource(R.string.scan_empty_dirs_title), color = Color.White.copy(alpha = 0.7f))
+                } else {
+                    LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.heightIn(max = 360.dp)) {
+                        items(directories, key = { it.relativePath }) { dir ->
+                            val checked = dir.relativePath in selectedDirectories
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { onToggleDir(dir.relativePath) }
+                                    .padding(vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Checkbox(
+                                    checked = checked,
+                                    onCheckedChange = { onToggleDir(dir.relativePath) },
+                                    colors = CheckboxDefaults.colors(checkedColor = BlueAccent)
+                                )
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(dir.displayName, color = Color.White, fontWeight = FontWeight.Medium)
+                                    Text(
+                                        text = stringResource(R.string.scan_dir_count_format, dir.imageCount.toString()),
+                                        color = Color.White.copy(alpha = 0.6f),
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    OutlinedButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
+                    Button(onClick = onConfirm, enabled = directories.isNotEmpty()) { Text(stringResource(R.string.confirm)) }
+                }
+            }
         }
     }
 }

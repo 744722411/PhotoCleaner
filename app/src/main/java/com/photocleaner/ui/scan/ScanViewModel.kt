@@ -162,6 +162,20 @@ class ScanViewModel @Inject constructor(
         scanJob = viewModelScope.launch {
             try {
                 persistSelectedDirectories()
+                val selectedDirectories = settingsRepository.getSelectedDirectoriesSync()
+                if (selectedDirectories.isEmpty()) {
+                    scanStateHolder.updateState {
+                        it.copy(
+                            isScanning = false,
+                            isProcessing = false,
+                            error = "请先选择至少一个扫描目录"
+                        )
+                    }
+                    scanStateHolder.addLog(
+                        ScanLogEntry(message = "未选择扫描目录，已停止", status = LogStatus.ERROR)
+                    )
+                    return@launch
+                }
 
                 scanStateHolder.updateState {
                     it.copy(
@@ -184,7 +198,6 @@ class ScanViewModel @Inject constructor(
                 scanStateHolder.addLog(ScanLogEntry(message = "开始扫描照片...", status = LogStatus.INFO))
 
                 val batchSize = settingsRepository.getBatchSizeSync()
-                val selectedDirectories = settingsRepository.getSelectedDirectoriesSync()
 
                 if (batchSize > 0) {
                     scanStateHolder.addLog(

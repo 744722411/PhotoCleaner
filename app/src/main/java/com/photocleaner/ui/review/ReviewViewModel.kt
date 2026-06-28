@@ -163,6 +163,7 @@ class ReviewViewModel @Inject constructor(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
+                pendingDeletePhotosList.removeAll { it.id in photos.map { photo -> photo.id }.toSet() }
                 _uiState.update { it.copy(error = e.message ?: "删除失败") }
             }
         }
