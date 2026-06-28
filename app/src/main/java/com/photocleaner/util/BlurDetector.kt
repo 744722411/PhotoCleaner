@@ -2,70 +2,53 @@ package com.photocleaner.util
 
 import android.graphics.Bitmap
 import android.graphics.Color
-import kotlin.math.abs
 
 object BlurDetector {
     private const val BLUR_THRESHOLD = 100.0
     private const val SAMPLE_SIZE = 4
 
     fun isBlurry(bitmap: Bitmap): Boolean {
-        val gray = toGrayscale(bitmap)
-        val laplacianVariance = computeLaplacianVariance(gray)
-        return laplacianVariance < BLUR_THRESHOLD
-    }
-
-    private fun toGrayscale(bitmap: Bitmap): Array<IntArray> {
         val width = bitmap.width / SAMPLE_SIZE
         val height = bitmap.height / SAMPLE_SIZE
-        val gray = Array(height) { IntArray(width) }
+        if (width < 3 || height < 3) return false
+
+        // Single flat allocation instead of Array<IntArray> to reduce GC pressure.
+        val gray = IntArray(width * height)
         val rowPixels = IntArray(bitmap.width)
 
+        var idx = 0
         for (y in 0 until height) {
-            val srcY = y * SAMPLE_SIZE
-            bitmap.getPixels(rowPixels, 0, bitmap.width, 0, srcY, bitmap.width, 1)
+            bitmap.getPixels(rowPixels, 0, bitmap.width, 0, y * SAMPLE_SIZE, bitmap.width, 1)
             for (x in 0 until width) {
                 val pixel = rowPixels[x * SAMPLE_SIZE]
-                val r = Color.red(pixel)
-                val g = Color.green(pixel)
-                val b = Color.blue(pixel)
-                gray[y][x] = (0.299 * r + 0.587 * g + 0.114 * b).toInt()
+                gray[idx++] = (0.299 * Color.red(pixel) +
+                    0.587 * Color.green(pixel) +
+                    0.114 * Color.blue(pixel)).toInt()
             }
         }
-        return gray
-    }
 
-    private fun computeLaplacianVariance(gray: Array<IntArray>): Double {
-        val height = gray.size
-        if (height < 3) return 0.0
-        val width = gray[0].size
-        if (width < 3) return 0.0
-
-        val laplacian = Array(height - 2) { IntArray(width - 2) }
+        val laplacian = IntArray((width - 2) * (height - 2))
         var sum = 0.0
         var count = 0
-
+        var lIdx = 0
         for (y in 1 until height - 1) {
             for (x in 1 until width - 1) {
-                val value = -gray[y - 1][x] - gray[y + 1][x] -
-                        gray[y][x - 1] - gray[y][x + 1] +
-                        4 * gray[y][x]
-                laplacian[y - 1][x - 1] = value
+                val value = -gray[(y - 1) * width + x] - gray[(y + 1) * width + x] -
+                    gray[y * width + x - 1] - gray[y * width + x + 1] +
+                    4 * gray[y * width + x]
+                laplacian[lIdx++] = value
                 sum += value
                 count++
             }
         }
+        if (count == 0) return false
 
-        if (count == 0) return 0.0
         val mean = sum / count
         var variance = 0.0
-
-        for (row in laplacian) {
-            for (v in row) {
-                val diff = v - mean
-                variance += diff * diff
-            }
+        for (v in laplacian) {
+            val diff = v - mean
+            variance += diff * diff
         }
-
-        return variance / count
+        return (variance / count) < BLUR_THRESHOLD
     }
 }

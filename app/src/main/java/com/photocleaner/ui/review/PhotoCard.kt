@@ -17,12 +17,14 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
+import com.photocleaner.R
 import com.photocleaner.domain.model.Classification
 import com.photocleaner.domain.model.Photo
 import com.photocleaner.ui.theme.*
@@ -49,7 +51,9 @@ fun PhotoCard(
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             AsyncImage(
-                model = ImageRequest.Builder(context).data(photo.uri).crossfade(true).build(),
+                model = remember(photo.uri) {
+                    ImageRequest.Builder(context).data(photo.uri).crossfade(true).build()
+                },
                 contentDescription = photo.displayName,
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop
@@ -86,13 +90,13 @@ fun PhotoCard(
                         onClick = onKeep,
                         modifier = Modifier.size(32.dp).clip(CircleShape).background(GreenAccent.copy(alpha = 0.9f))
                     ) {
-                        Icon(Icons.Default.Check, contentDescription = "保留", tint = Color.White, modifier = Modifier.size(18.dp))
+                        Icon(Icons.Default.Check, contentDescription = stringResource(R.string.keep), tint = Color.White, modifier = Modifier.size(18.dp))
                     }
                     IconButton(
                         onClick = onDelete,
                         modifier = Modifier.size(32.dp).clip(CircleShape).background(RedAccent.copy(alpha = 0.9f))
                     ) {
-                        Icon(Icons.Default.Delete, contentDescription = "删除", tint = Color.White, modifier = Modifier.size(18.dp))
+                        Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.delete), tint = Color.White, modifier = Modifier.size(18.dp))
                     }
                 }
             }
@@ -111,10 +115,10 @@ fun ClassificationChip(
     modifier: Modifier = Modifier
 ) {
     val (color, text) = when (classification) {
-        Classification.USELESS -> RedAccent to "无用"
-        Classification.KEEP -> GreenAccent to "保留"
-        Classification.UNCERTAIN -> YellowAccent to "待定"
-        Classification.UNKNOWN -> Color.Gray to "未分类"
+        Classification.USELESS -> RedAccent to stringResource(R.string.class_useless_short)
+        Classification.KEEP -> GreenAccent to stringResource(R.string.class_keep_short)
+        Classification.UNCERTAIN -> YellowAccent to stringResource(R.string.class_uncertain_short)
+        Classification.UNKNOWN -> Color.Gray to stringResource(R.string.class_unknown)
     }
 
     Surface(modifier = modifier, color = color.copy(alpha = 0.9f), shape = RoundedCornerShape(8.dp)) {

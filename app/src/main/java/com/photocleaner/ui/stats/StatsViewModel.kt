@@ -1,4 +1,4 @@
-package com.photocleaner.ui.stats
+﻿package com.photocleaner.ui.stats
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -7,8 +7,10 @@ import com.photocleaner.domain.model.Photo
 import com.photocleaner.domain.repository.PhotoRepository
 import com.photocleaner.util.ImageUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.*
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import javax.inject.Inject
 
 data class CategoryStat(
@@ -19,7 +21,7 @@ data class CategoryStat(
 
 data class StatsUiState(
     val totalPhotos: Int = 0,
-    val classifiedPhotos: Int = 0,
+    val processedPhotos: Int = 0,
     val uselessPhotos: Int = 0,
     val uselessSize: Long = 0L,
     val spaceSaved: String = "0B",
@@ -32,46 +34,27 @@ class StatsViewModel @Inject constructor(
     private val repository: PhotoRepository
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(StatsUiState())
-    val uiState: StateFlow<StatsUiState> = _uiState.asStateFlow()
-
-    init {
-        loadStats()
-    }
-
-    private fun loadStats() {
-        viewModelScope.launch {
-            combine(
-                repository.getTotalCount(),
-                repository.getClassifiedCount(),
-                repository.getUselessCount(),
-                repository.getUselessSize()
-            ) { total, classified, useless, size ->
-                // Return the values from combine, don't update state here
-                total to Triple(classified, useless, size)
-            }.collect { (total, triple) ->
-                val (classified, useless, size) = triple
-                _uiState.update {
-                    it.copy(
-                        totalPhotos = total,
-                        classifiedPhotos = classified,
-                        uselessPhotos = useless,
-                        uselessSize = size,
-                        spaceSaved = ImageUtils.formatFileSize(size)
-                    )
-                }
-            }
-        }
-
-        viewModelScope.launch {
-            repository.getAllPhotos().collect { photos ->
-                val categoryStats = buildCategoryStats(photos)
-                _uiState.update {
-                    it.copy(categoryStats = categoryStats, isLoading = false)
-                }
-            }
-        }
-    }
+    val uiState: StateFlow<StatsUiState> = combine(
+        repository.getTotalCount(),
+        repository.getClassifiedCount(),
+        repository.getUselessCount(),
+        repository.getUselessSize(),
+        repository.getAllPhotos()
+    ) { total, classified, useless, size, photos ->
+        StatsUiState(
+            totalPhotos = total,
+            processedPhotos = classified,
+            uselessPhotos = useless,
+            uselessSize = size,
+            spaceSaved = ImageUtils.formatFileSize(size),
+            categoryStats = buildCategoryStats(photos),
+            isLoading = false
+        )
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = StatsUiState()
+    )
 
     private fun buildCategoryStats(photos: List<Photo>): List<CategoryStat> {
         val grouped = photos.groupBy { it.classification }
@@ -85,3 +68,4 @@ class StatsViewModel @Inject constructor(
         }.filter { it.count > 0 }
     }
 }
+

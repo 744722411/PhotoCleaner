@@ -1,7 +1,6 @@
 package com.photocleaner.ui.theme
 
 import android.os.Build
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
@@ -45,6 +44,8 @@ private val LightColorScheme = lightColorScheme(
 
 @Composable
 fun PhotoCleanerTheme(
+    // App is dark-by-design; the palette is tuned for a dark surface. Light mode is a
+    // future design task, so we intentionally use the dark color scheme regardless of system.
     darkTheme: Boolean = true,
     dynamicColor: Boolean = true,
     content: @Composable () -> Unit

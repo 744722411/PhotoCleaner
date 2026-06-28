@@ -17,9 +17,9 @@
 
 PhotoCleaner is an Android photo cleanup assistant focused on local, on-device analysis. It scans selected folders, detects obvious low-quality or low-value photos, groups visually similar shots, and gives you a review screen before anything is removed.
 
-Version 1.7.0 removes the remote AI/OpenAI-compatible classification pipeline. The app no longer stores API keys, no longer includes Retrofit/OkHttp/Moshi networking code, and explicitly removes the `INTERNET` permission from the merged manifest.
+Version 1.7.1 removes the remote AI/OpenAI-compatible classification pipeline. The app no longer stores API keys, no longer includes Retrofit/OkHttp/Moshi networking code, and explicitly removes the `INTERNET` permission from the merged manifest.
 
-## What's New in v1.7.0
+## What's New in v1.7.1
 
 - Fully local scanning and detection flow.
 - Removed OpenAI-compatible API settings, encrypted API key storage, network clients, DTOs, and remote classification use cases.

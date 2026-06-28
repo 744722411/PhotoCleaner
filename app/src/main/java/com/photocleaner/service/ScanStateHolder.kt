@@ -1,8 +1,5 @@
 package com.photocleaner.service
 
-import com.photocleaner.domain.model.Photo
-import com.photocleaner.ui.scan.ScanLogEntry
-import com.photocleaner.ui.scan.ScanUiState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -25,12 +22,21 @@ class ScanStateHolder @Inject constructor() {
 
     fun addLog(entry: ScanLogEntry) {
         _uiState.update { state ->
-            val newLogs = state.scanLogs + entry
-            state.copy(scanLogs = if (newLogs.size > 1000) newLogs.takeLast(1000) else newLogs)
+            val newLogs = if (state.scanLogs.size >= MAX_LOGS) {
+                // Drop oldest without reallocating the whole list every append.
+                state.scanLogs.drop(state.scanLogs.size - MAX_LOGS + 1) + entry
+            } else {
+                state.scanLogs + entry
+            }
+            state.copy(scanLogs = newLogs)
         }
     }
 
     fun reset() {
         _uiState.value = ScanUiState()
+    }
+
+    private companion object {
+        const val MAX_LOGS = 1000
     }
 }

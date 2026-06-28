@@ -44,14 +44,20 @@ fun SwipeablePhotoCard(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val density = androidx.compose.ui.platform.LocalDensity.current
     val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     val coroutineScope = rememberCoroutineScope()
-    
+
     var dragOffset by remember(photo.id) { mutableStateOf(0f) }
     val animOffset = remember { Animatable(0f) }
-    
-    val screenWidth = context.resources.displayMetrics.widthPixels.toFloat()
-    val threshold = screenWidth * 0.2f
+
+    BoxWithConstraints(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(24.dp)
+    ) {
+        val screenWidth = with(density) { maxWidth.toPx() }
+        val threshold = screenWidth * 0.2f
 
     var hasHapticTriggeredRight by remember { mutableStateOf(false) }
     var hasHapticTriggeredLeft by remember { mutableStateOf(false) }
@@ -61,9 +67,8 @@ fun SwipeablePhotoCard(
     val activeRotation = activeOffset / 30f
 
     Box(
-        modifier = modifier
+        modifier = Modifier
             .fillMaxSize()
-            .padding(24.dp)
             .graphicsLayer(
                 translationX = activeOffset,
                 rotationZ = activeRotation
@@ -129,10 +134,12 @@ fun SwipeablePhotoCard(
             )
     ) {
         AsyncImage(
-            model = ImageRequest.Builder(context)
-                .data(photo.uri)
-                .crossfade(true)
-                .build(),
+            model = remember(photo.uri) {
+                ImageRequest.Builder(context)
+                    .data(photo.uri)
+                    .crossfade(true)
+                    .build()
+            },
             contentDescription = photo.displayName,
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Crop
@@ -227,5 +234,6 @@ fun SwipeablePhotoCard(
                 }
             }
         }
+    }
     }
 }

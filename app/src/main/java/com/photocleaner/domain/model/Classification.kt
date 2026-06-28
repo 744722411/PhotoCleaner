@@ -16,4 +16,9 @@ enum class Classification {
 
     val displayNameEn: String
         get() = name.lowercase()
+
+    companion object {
+        fun fromString(value: String): Classification =
+            entries.firstOrNull { it.name == value } ?: UNKNOWN
+    }
 }

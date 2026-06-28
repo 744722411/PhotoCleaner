@@ -30,10 +30,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.photocleaner.R
 import com.photocleaner.ui.components.GlassCard
 import com.photocleaner.ui.components.ModernSectionHeader
 import com.photocleaner.ui.theme.BlueAccent
@@ -64,13 +66,13 @@ fun SettingsScreen(
             Spacer(modifier = Modifier.height(12.dp))
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
-                    text = "设置",
+                    text = stringResource(R.string.settings_title),
                     style = MaterialTheme.typography.headlineLarge,
                     color = Color.White,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = "本地扫描与隐私状态",
+                    text = stringResource(R.string.settings_subtitle),
                     style = MaterialTheme.typography.bodyLarge,
                     color = Color.White.copy(alpha = 0.7f)
                 )
@@ -88,9 +90,9 @@ fun SettingsScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        ModernSectionHeader(title = "隐私保护", icon = Icons.Default.Security)
+                        ModernSectionHeader(title = stringResource(R.string.settings_privacy), icon = Icons.Default.Security)
                         StatusPill(
-                            text = if (uiState.networkDisabled) "离线" else "联网",
+                            text = stringResource(if (uiState.networkDisabled) R.string.settings_offline else R.string.settings_online),
                             color = if (uiState.networkDisabled) GreenAccent else YellowAccent
                         )
                     }
@@ -98,20 +100,20 @@ fun SettingsScreen(
                     SettingInfoRow(
                         icon = Icons.Default.CheckCircle,
                         iconColor = GreenAccent,
-                        title = "网络接口已移除",
-                        description = "应用不再保存联网配置，也不会调用网络分类服务。"
+                        title = stringResource(R.string.settings_net_removed_title),
+                        description = stringResource(R.string.settings_net_removed_desc)
                     )
                     SettingInfoRow(
                         icon = Icons.Default.FolderOpen,
                         iconColor = BlueAccent,
-                        title = "照片只在设备上处理",
-                        description = "目录扫描、清晰度判断、截图识别和相似检测都走本地逻辑。"
+                        title = stringResource(R.string.settings_local_title),
+                        description = stringResource(R.string.settings_local_desc)
                     )
                     SettingInfoRow(
                         icon = Icons.Default.TipsAndUpdates,
                         iconColor = YellowAccent,
-                        title = "清理前仍需确认",
-                        description = "扫描结果会进入审查页，删除前可以逐张确认或撤销。"
+                        title = stringResource(R.string.settings_confirm_title),
+                        description = stringResource(R.string.settings_confirm_desc)
                     )
                 }
             }
@@ -124,7 +126,7 @@ fun SettingsScreen(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
-                    text = "当前版本专注本地照片清理，不需要任何联网分类配置。",
+                    text = stringResource(R.string.settings_footer),
                     modifier = Modifier.padding(14.dp),
                     color = GreenAccent,
                     style = MaterialTheme.typography.bodyMedium,

@@ -2,45 +2,37 @@ package com.photocleaner.data.repository
 
 import android.content.ContentUris
 import android.content.Context
-import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Environment
 import android.provider.MediaStore
 import com.photocleaner.data.local.PhotoDao
-import com.photocleaner.data.local.entity.PhotoEntity
-import com.photocleaner.domain.model.DirectoryInfo
+import com.photocleaner.data.mapper.PhotoMapper
 import com.photocleaner.domain.model.Classification
+import com.photocleaner.domain.model.DirectoryInfo
 import com.photocleaner.domain.model.Photo
 import com.photocleaner.domain.repository.PhotoRepository
-import com.photocleaner.util.BlurDetector
-import com.photocleaner.util.ScreenshotDetector
-import com.photocleaner.util.ImageUtils
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
-import com.google.mlkit.vision.common.InputImage
-import com.google.mlkit.vision.label.ImageLabeling
-import com.google.mlkit.vision.label.defaults.ImageLabelerOptions
-import kotlinx.coroutines.tasks.await
 
 @Singleton
 class PhotoRepositoryImpl @Inject constructor(
     private val photoDao: PhotoDao,
+    private val mapper: PhotoMapper,
     @ApplicationContext private val context: Context
 ) : PhotoRepository {
 
     override fun getAllPhotos(): Flow<List<Photo>> =
-        photoDao.getAllPhotos().map { entities -> entities.map { it.toDomain() } }
+        photoDao.getAllPhotos().map { entities -> entities.map { mapper.toDomain(it) } }
 
     override fun getPhotosByClassification(classification: Classification): Flow<List<Photo>> =
         photoDao.getPhotosByClassification(classification.name).map { entities ->
-            entities.map { it.toDomain() }
+            entities.map { mapper.toDomain(it) }
         }
 
     override fun getClassifiedCount(): Flow<Int> = photoDao.getClassifiedCount()
@@ -66,7 +58,6 @@ class PhotoRepositoryImpl @Inject constructor(
         )
 
         val useDirectoryFilter = selectedDirectories.isNotEmpty()
-
         val sortOrder = "${MediaStore.Images.Media.DATE_ADDED} DESC"
 
         context.contentResolver.query(
@@ -85,7 +76,6 @@ class PhotoRepositoryImpl @Inject constructor(
             val dataCol = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATA)
 
             while (cursor.moveToNext()) {
-                // Directory filtering
                 if (useDirectoryFilter) {
                     val relativePath = cursor.getString(relPathCol) ?: ""
                     val fullPath = cursor.getString(dataCol) ?: ""
@@ -118,19 +108,13 @@ class PhotoRepositoryImpl @Inject constructor(
                 )
             }
         }
-
         photos
     }
 
     companion object {
-        /** Minimum number of qualifying images for a directory to appear */
         private const val MIN_IMAGE_COUNT = 3
-        /** Minimum file size in bytes (100 KB) */
         private const val MIN_FILE_SIZE = 100 * 1024L
-        /** Minimum image width and height in pixels */
         private const val MIN_DIMENSION = 200
-
-        /** Path segments (case-insensitive) that indicate asset / non-user directories */
         private val EXCLUDED_DIR_PATTERNS = listOf(
             "drawable", "assets", "res", "mipmap",
             "emoji", "sticker", "emoticon",
@@ -141,11 +125,6 @@ class PhotoRepositoryImpl @Inject constructor(
         )
     }
 
-    /**
-     * Smart directory discovery that filters out app-internal, asset, and other
-     * non-user directories.  Only directories with ≥ 3 "meaningful" images
-     * (≥ 100 KB file size AND ≥ 200 × 200 pixels) are returned.
-     */
     override suspend fun discoverDirectories(): List<DirectoryInfo> = withContext(Dispatchers.IO) {
         val dirCounts = mutableMapOf<String, Int>()
         val projection = arrayOf(
@@ -170,16 +149,11 @@ class PhotoRepositoryImpl @Inject constructor(
                 val size = cursor.getLong(sizeCol)
                 val width = cursor.getInt(widthCol)
                 val height = cursor.getInt(heightCol)
-
-                // --- Filter 1: minimum file size ---
                 if (size < MIN_FILE_SIZE) continue
-
-                // --- Filter 2: minimum image dimensions ---
                 if (width < MIN_DIMENSION || height < MIN_DIMENSION) continue
 
                 val relativePath = cursor.getString(relPathCol)
                 val fullPath = cursor.getString(dataCol)
-
                 val dir = when {
                     !relativePath.isNullOrBlank() -> relativePath.trimEnd('/')
                     !fullPath.isNullOrBlank() -> {
@@ -194,25 +168,20 @@ class PhotoRepositoryImpl @Inject constructor(
                     }
                     else -> continue
                 }
-
                 if (dir.isBlank()) continue
 
-                // --- Filter 3: exclude hidden directories (segments starting with '.') ---
                 val segments = dir.split("/")
                 if (segments.any { it.startsWith(".") }) continue
 
-                // --- Filter 4: exclude known asset / non-user directories ---
                 val dirLower = dir.lowercase()
                 if (EXCLUDED_DIR_PATTERNS.any { pattern ->
-                        segments.any { it.lowercase() == pattern } ||
-                        dirLower.contains(pattern)
+                        segments.any { it.lowercase() == pattern } || dirLower.contains(pattern)
                     }) continue
 
                 dirCounts[dir] = (dirCounts[dir] ?: 0) + 1
             }
         }
 
-        // --- Filter 5: minimum image count per directory ---
         dirCounts.filter { it.value >= MIN_IMAGE_COUNT }
             .map { (path, count) ->
                 DirectoryInfo(
@@ -232,9 +201,7 @@ class PhotoRepositoryImpl @Inject constructor(
     override suspend fun deletePhotos(photos: List<Photo>) {
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
             val ids = photos.map { it.id }
-            if (ids.isNotEmpty()) {
-                photoDao.setTrashStatus(ids, true)
-            }
+            if (ids.isNotEmpty()) photoDao.setTrashStatus(ids, true)
             return
         }
 
@@ -248,11 +215,8 @@ class PhotoRepositoryImpl @Inject constructor(
                 val inputStream = context.contentResolver.openInputStream(uri)
                 if (inputStream != null) {
                     val trashFile = File(trashDir, "${photo.id}_${photo.displayName}")
-                    trashFile.outputStream().use { output ->
-                        inputStream.copyTo(output)
-                    }
+                    trashFile.outputStream().use { output -> inputStream.copyTo(output) }
                     inputStream.close()
-
                     context.contentResolver.delete(uri, null, null)
                     ids.add(photo.id)
                 }
@@ -260,24 +224,18 @@ class PhotoRepositoryImpl @Inject constructor(
                 android.util.Log.e("PhotoRepositoryImpl", "Failed to delete photo: ${photo.displayName}", e)
             }
         }
-
-        if (ids.isNotEmpty()) {
-            photoDao.setTrashStatus(ids, true)
-        }
+        if (ids.isNotEmpty()) photoDao.setTrashStatus(ids, true)
     }
 
     override suspend fun restorePhotos(photos: List<Photo>) {
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
             val ids = photos.map { it.id }
-            if (ids.isNotEmpty()) {
-                photoDao.setTrashStatus(ids, false)
-            }
+            if (ids.isNotEmpty()) photoDao.setTrashStatus(ids, false)
             return
         }
 
         val trashDir = File(context.getExternalFilesDir(Environment.DIRECTORY_PICTURES), "trash")
         val ids = mutableListOf<Long>()
-
         photos.forEach { photo ->
             try {
                 val trashFile = File(trashDir, "${photo.id}_${photo.displayName}")
@@ -295,176 +253,18 @@ class PhotoRepositoryImpl @Inject constructor(
                 android.util.Log.e("PhotoRepositoryImpl", "Failed to restore photo: ${photo.displayName}", e)
             }
         }
-
-        if (ids.isNotEmpty()) {
-            photoDao.setTrashStatus(ids, false)
-        }
+        if (ids.isNotEmpty()) photoDao.setTrashStatus(ids, false)
     }
 
-    override suspend fun createTrashPendingIntent(photos: List<Photo>): android.app.PendingIntent? {
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
-            val uris = photos.map { Uri.parse(it.uri) }
-            return try {
-                MediaStore.createTrashRequest(context.contentResolver, uris, true)
-            } catch (e: Exception) {
-                android.util.Log.e("PhotoRepositoryImpl", "Failed to create trash request", e)
-                null
-            }
-        }
-        return null
-    }
+    override suspend fun getPhotoById(id: Long): Photo? = photoDao.getPhotoById(id)?.let { mapper.toDomain(it) }
 
-    override suspend fun getPhotoById(id: Long): Photo? =
-        photoDao.getPhotoById(id)?.toDomain()
+    override suspend fun getAllPhotoIds(): List<Long> = photoDao.getAllPhotoIds()
 
-    override suspend fun getAllPhotoIds(): List<Long> =
-        photoDao.getAllPhotoIds()
-
-    override suspend fun deletePhotosByIds(ids: List<Long>) {
-        photoDao.deleteByIds(ids)
-    }
+    override suspend fun deletePhotosByIds(ids: List<Long>) = photoDao.deleteByIds(ids)
 
     override suspend fun insertPhotos(photos: List<Photo>) {
-        photoDao.insertPhotos(photos.map { it.toEntity() })
+        photoDao.insertPhotos(photos.map { mapper.toEntity(it) })
     }
 
-    override suspend fun clearAll() {
-        photoDao.clearAll()
-    }
-
-    private val labeler by lazy {
-        ImageLabeling.getClient(ImageLabelerOptions.DEFAULT_OPTIONS)
-    }
-
-    override suspend fun detectLocalIssues(photo: Photo): Photo {
-        return try {
-            val uri = Uri.parse(photo.uri)
-            
-            // Step 1: Fast screenshot detection (no Bitmap decode needed)
-            val isScreenshot = ScreenshotDetector.isScreenshot(
-                context, uri, photo.displayName, photo.width, photo.height, photo.mimeType
-            )
-            
-            if (isScreenshot) {
-                return photo.copy(
-                    isLocalUseless = true,
-                    localReason = "截图",
-                    classification = Classification.UNCERTAIN,
-                    confidence = 0.7f,
-                    category = "screenshot"
-                )
-            }
-
-            // Step 2: Only decode Bitmap for actual photos that need blur/blank/MLKit detection
-            val sampleSize = context.contentResolver.openInputStream(uri)?.use { inputStream ->
-                val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-                BitmapFactory.decodeStream(inputStream, null, options)
-                calculateInSampleSize(options, 800, 800)
-            } ?: 1
-
-            val decodeOptions = BitmapFactory.Options().apply { inSampleSize = sampleSize }
-
-            val bitmap = context.contentResolver.openInputStream(uri)?.use { inputStream2 ->
-                BitmapFactory.decodeStream(inputStream2, null, decodeOptions)
-            }
-
-            if (bitmap == null) return photo
-
-            try {
-                // Check if blank (uniform color)
-                val isBlank = ImageUtils.isBlank(bitmap)
-                if (isBlank) {
-                    return photo.copy(
-                        isLocalUseless = true,
-                        localReason = "空白照片",
-                        classification = Classification.USELESS,
-                        confidence = 0.95f,
-                        category = "blank_photo"
-                    )
-                }
-
-                // Check if blurry
-                val isBlurry = BlurDetector.isBlurry(bitmap)
-                if (isBlurry) {
-                    return photo.copy(
-                        isLocalUseless = true,
-                        localReason = "模糊照片",
-                        classification = Classification.USELESS,
-                        confidence = 0.9f,
-                        category = "blurry_photo"
-                    )
-                }
-
-                // ML Kit Image Labeling (reuse labeler instance)
-                var mlKitCategory = ""
-                var mlKitClassification: Classification? = null
-                try {
-                    val inputImage = InputImage.fromBitmap(bitmap, 0)
-                    val labels = labeler.process(inputImage).await()
-                    
-                    val documentLabels = setOf("Receipt", "Document", "Text", "Font", "Barcode")
-                    for (label in labels) {
-                        if (label.confidence > 0.7f && documentLabels.contains(label.text)) {
-                            mlKitCategory = label.text.lowercase()
-                            mlKitClassification = Classification.UNCERTAIN
-                            break
-                        }
-                    }
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                }
-
-                val dHash = ImageUtils.computeDHash(bitmap)
-
-                val resultPhoto = if (mlKitClassification != null) {
-                    photo.copy(
-                        isLocalUseless = true,
-                        localReason = "文档票据",
-                        classification = Classification.UNCERTAIN,
-                        confidence = 0.8f,
-                        category = mlKitCategory
-                    )
-                } else {
-                    photo
-                }
-                resultPhoto.copy(dHash = dHash)
-            } finally {
-                bitmap.recycle()
-            }
-        } catch (e: Exception) {
-            photo
-        }
-    }
-
-    private fun calculateInSampleSize(options: BitmapFactory.Options, reqWidth: Int, reqHeight: Int): Int {
-        val (height, width) = options.outHeight to options.outWidth
-        var inSampleSize = 1
-        if (height > reqHeight || width > reqWidth) {
-            val halfHeight = height / 2
-            val halfWidth = width / 2
-            while (halfHeight / inSampleSize >= reqHeight && halfWidth / inSampleSize >= reqWidth) {
-                inSampleSize *= 2
-            }
-        }
-        return inSampleSize
-    }
-
-    private fun PhotoEntity.toDomain() = Photo(
-        id = id, uri = uri, displayName = displayName, mimeType = mimeType,
-        width = width, height = height, size = size, dateAdded = dateAdded,
-        dateModified = dateModified, filePath = filePath,
-        classification = try { Classification.valueOf(classification) } catch (_: Exception) { Classification.UNKNOWN },
-        confidence = confidence, category = category,
-        isLocalUseless = isLocalUseless, localReason = localReason, isInTrash = isInTrash,
-        dHash = dHash
-    )
-
-    private fun Photo.toEntity() = PhotoEntity(
-        id = id, uri = uri, displayName = displayName, mimeType = mimeType,
-        width = width, height = height, size = size, dateAdded = dateAdded,
-        dateModified = dateModified, filePath = filePath, classification = classification.name,
-        confidence = confidence, category = category,
-        isLocalUseless = isLocalUseless, localReason = localReason, isInTrash = isInTrash,
-        dHash = dHash
-    )
+    override suspend fun clearAll() = photoDao.clearAll()
 }

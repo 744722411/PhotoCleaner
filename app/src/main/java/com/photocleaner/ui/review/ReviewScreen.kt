@@ -32,6 +32,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -43,6 +44,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
+import com.photocleaner.R
 import com.photocleaner.domain.model.Classification
 import com.photocleaner.domain.model.Photo
 import com.photocleaner.ui.components.GlassCard
@@ -53,6 +55,7 @@ import com.photocleaner.ui.theme.*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReviewScreen(
+    snackbarHostState: androidx.compose.material3.SnackbarHostState,
     viewModel: ReviewViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -86,6 +89,13 @@ fun ReviewScreen(
         }
     }
 
+    LaunchedEffect(uiState.error) {
+        uiState.error?.let {
+            snackbarHostState.showSnackbar(it, withDismissAction = true)
+            viewModel.clearError()
+        }
+    }
+
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
     var pendingDeletePhotos by remember { mutableStateOf<List<Photo>>(emptyList()) }
     var isPendingBatchDelete by remember { mutableStateOf(false) }
@@ -116,14 +126,7 @@ fun ReviewScreen(
                     containerColor = RedAccent,
                     contentColor = Color.White
                 ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 16.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Icon(Icons.Default.Delete, contentDescription = null)
-                        Text("${uiState.selectedPhotos.size}", fontWeight = FontWeight.Bold)
-                    }
+                    Icon(Icons.Default.Delete, contentDescription = null)
                 }
             }
         }
@@ -167,8 +170,8 @@ fun ReviewScreen(
                                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                                     ModernEmptyState(
                                         icon = Icons.Default.CheckCircle,
-                                        title = "没有相似照片",
-                                        subtitle = "当前没有发现连续拍摄或内容非常接近的照片"
+                                        title = stringResource(R.string.review_empty_similar_title),
+                                        subtitle = stringResource(R.string.review_empty_similar_sub)
                                     )
                                 }
                             } else {
@@ -192,8 +195,8 @@ fun ReviewScreen(
                             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                                 ModernEmptyState(
                                     icon = Icons.Default.CheckCircle,
-                                    title = "当前分类为空",
-                                    subtitle = "换个筛选看看，或者先去扫描新照片"
+                                    title = stringResource(R.string.review_empty_title),
+                                    subtitle = stringResource(R.string.review_empty_sub)
                                 )
                             }
                         }
@@ -238,7 +241,7 @@ fun ReviewScreen(
                 }
             }
 
-            ReviewPendingDeleteBanner(
+        ReviewPendingDeleteBanner(
                 uiState = uiState,
                 onUndo = { viewModel.undoDelete() },
                 onCommit = { viewModel.commitPendingDeletes() },
@@ -316,9 +319,9 @@ private fun ReviewHeader(
                 Icon(Icons.Default.Preview, contentDescription = null, tint = BlueAccent, modifier = Modifier.size(20.dp))
             }
             Column {
-                Text("照片审查", style = MaterialTheme.typography.titleLarge, color = Color.White, fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.review_title), style = MaterialTheme.typography.titleLarge, color = Color.White, fontWeight = FontWeight.Bold)
                 Text(
-                    if (uiState.isBatchMode) "批量模式已开启" else "逐张确认保留或删除",
+                    stringResource(if (uiState.isBatchMode) R.string.review_subtitle_batch else R.string.review_subtitle_normal),
                     style = MaterialTheme.typography.bodySmall,
                     color = Color.White.copy(alpha = 0.6f)
                 )
@@ -381,7 +384,7 @@ private fun ReviewFilterRow(
             FilterChip(
                 selected = selected == filter,
                 onClick = { onSelect(filter) },
-                label = { Text(filter.displayName) },
+                label = { Text(stringResource(filter.displayRes)) },
                 colors = FilterChipDefaults.filterChipColors(
                     selectedContainerColor = color.copy(alpha = 0.24f),
                     selectedLabelColor = color,
@@ -406,18 +409,15 @@ private fun ReviewSummary(
         ) {
             Column {
                 Text(
-                    text = when (uiState.filter) {
-                        FilterType.SIMILAR -> "相似组"
-                        else -> "当前结果"
-                    },
+                    text = stringResource(if (uiState.filter == FilterType.SIMILAR) R.string.review_summary_similar else R.string.review_summary_result),
                     style = MaterialTheme.typography.labelMedium,
                     color = Color.White.copy(alpha = 0.55f)
                 )
                 Text(
                     text = if (uiState.filter == FilterType.SIMILAR) {
-                        "${uiState.similarGroups.size} 组"
+                        stringResource(R.string.review_group_count, uiState.similarGroups.size)
                     } else {
-                        "${uiState.photos.size} 张"
+                        stringResource(R.string.review_photo_count, uiState.photos.size)
                     },
                     style = MaterialTheme.typography.titleMedium,
                     color = Color.White,
@@ -425,15 +425,15 @@ private fun ReviewSummary(
                 )
             }
             if (uiState.isBatchMode) {
-                Text(
-                    text = "已选 ${uiState.selectedPhotos.size}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = BlueAccent,
-                    fontWeight = FontWeight.Bold
-                )
-            } else if (uiState.lastDeletedPhotos.isNotEmpty()) {
-                Text(
-                    text = "待提交 ${uiState.lastDeletedPhotos.size}",
+                    Text(
+                        text = stringResource(R.string.review_selected, uiState.selectedPhotos.size),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = BlueAccent,
+                        fontWeight = FontWeight.Bold
+                    )
+                } else if (uiState.lastDeletedPhotos.isNotEmpty()) {
+                    Text(
+                        text = stringResource(R.string.review_pending, uiState.lastDeletedPhotos.size),
                     style = MaterialTheme.typography.bodyMedium,
                     color = YellowAccent,
                     fontWeight = FontWeight.Bold
@@ -467,10 +467,12 @@ private fun ReviewSwipeContent(
                     .background(DarkSurfaceVariant.copy(alpha = 0.45f))
             ) {
                 AsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
-                        .data(nextPhoto.uri)
-                        .crossfade(true)
-                        .build(),
+                    model = remember(nextPhoto.uri) {
+                        ImageRequest.Builder(LocalContext.current)
+                            .data(nextPhoto.uri)
+                            .crossfade(true)
+                            .build()
+                    },
                     contentDescription = null,
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop,
@@ -517,9 +519,9 @@ private fun ReviewPendingDeleteBanner(
                     )
                     Text(
                         text = if (uiState.showUndo) {
-                            "已标记 ${uiState.lastDeletedPhotos.size} 张照片"
+                            stringResource(R.string.review_marked, uiState.lastDeletedPhotos.size)
                         } else {
-                            "待提交 ${uiState.lastDeletedPhotos.size} 张到系统回收站"
+                            stringResource(R.string.review_pending_submit, uiState.lastDeletedPhotos.size)
                         },
                         color = Color.White,
                         style = MaterialTheme.typography.bodyMedium,
@@ -528,14 +530,14 @@ private fun ReviewPendingDeleteBanner(
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     TextButton(onClick = onUndo) {
-                        Text("撤销", color = BlueAccent, fontWeight = FontWeight.Bold)
+                        Text(stringResource(R.string.undo), color = BlueAccent, fontWeight = FontWeight.Bold)
                     }
                     if (!uiState.showUndo && uiState.lastDeletedPhotos.isNotEmpty()) {
                         Button(
                             onClick = onCommit,
                             colors = ButtonDefaults.buttonColors(containerColor = RedAccent)
                         ) {
-                            Text("提交删除")
+                            Text(stringResource(R.string.commit_delete))
                         }
                     }
                 }
@@ -572,13 +574,13 @@ fun SimilarGroupCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column {
-                    Text("相似照片组", color = Color.White, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
-                    Text("${group.size} 张候选", color = Color.White.copy(alpha = 0.55f), style = MaterialTheme.typography.bodySmall)
+                Text("相似照片组", color = Color.White, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                Text(stringResource(R.string.review_similar_candidates, group.size), color = Color.White.copy(alpha = 0.55f), style = MaterialTheme.typography.bodySmall)
                 }
-                OutlinedButton(onClick = onKeepBest) {
+                    OutlinedButton(onClick = onKeepBest) {
                     Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text("保留最佳")
+                    Text(stringResource(R.string.review_keep_best))
                 }
             }
 
@@ -586,7 +588,7 @@ fun SimilarGroupCard(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                items(group) { photo ->
+                items(group, key = { it.id }) { photo ->
                     Box(
                         modifier = Modifier
                             .size(108.dp)
@@ -595,10 +597,12 @@ fun SimilarGroupCard(
                             .clickable { onPhotoClick(photo) }
                     ) {
                         AsyncImage(
-                            model = ImageRequest.Builder(context)
-                                .data(photo.uri)
-                                .crossfade(true)
-                                .build(),
+                            model = remember(photo.uri) {
+                                ImageRequest.Builder(context)
+                                    .data(photo.uri)
+                                    .crossfade(true)
+                                    .build()
+                            },
                             contentDescription = null,
                             modifier = Modifier.fillMaxSize(),
                             contentScale = ContentScale.Crop
@@ -613,7 +617,7 @@ fun SimilarGroupCard(
                                 shape = RoundedCornerShape(6.dp)
                             ) {
                                 Text(
-                                    text = "最佳",
+                                    text = stringResource(R.string.best),
                                     color = Color.White,
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.Bold,
@@ -646,15 +650,17 @@ fun PhotoDetailDialog(
                 .fillMaxSize()
                 .background(Color.Black)
         ) {
-            AsyncImage(
-                model = ImageRequest.Builder(context)
-                    .data(photo.uri)
-                    .crossfade(true)
-                    .build(),
-                contentDescription = photo.displayName,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Fit
-            )
+                AsyncImage(
+                    model = remember(photo.uri) {
+                        ImageRequest.Builder(context)
+                            .data(photo.uri)
+                            .crossfade(true)
+                            .build()
+                    },
+                    contentDescription = photo.displayName,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Fit
+                )
 
             Row(
                 modifier = Modifier
@@ -665,7 +671,7 @@ fun PhotoDetailDialog(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(onClick = onDismiss) {
-                    Icon(Icons.Default.Close, contentDescription = "关闭", tint = Color.White)
+                    Icon(Icons.Default.Close, contentDescription = stringResource(R.string.close), tint = Color.White)
                 }
                 Text(
                     text = photo.displayName,
@@ -724,7 +730,7 @@ fun PhotoDetailDialog(
                     ) {
                         Icon(Icons.Default.Check, contentDescription = null)
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("保留")
+                        Text(stringResource(R.string.keep))
                     }
                     Button(
                         onClick = onDelete,
@@ -734,7 +740,7 @@ fun PhotoDetailDialog(
                     ) {
                         Icon(Icons.Default.Delete, contentDescription = null)
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("删除")
+                        Text(stringResource(R.string.delete))
                     }
                 }
             }
@@ -765,7 +771,7 @@ fun DeleteConfirmDialog(
         },
         title = {
             Text(
-                text = "确认删除",
+                text = stringResource(R.string.review_confirm_delete_title),
                 style = MaterialTheme.typography.titleLarge,
                 color = Color.White,
                 fontWeight = FontWeight.Bold,
@@ -780,13 +786,13 @@ fun DeleteConfirmDialog(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Text(
-                    text = "即将标记 $count 张照片",
+                    text = stringResource(R.string.review_confirm_delete_count, count),
                     style = MaterialTheme.typography.bodyLarge,
                     color = Color.White,
                     fontWeight = FontWeight.Medium
                 )
                 Text(
-                    text = "确认后会先进入待提交状态，随后由系统回收站完成删除。",
+                    text = stringResource(R.string.review_confirm_delete_body),
                     style = MaterialTheme.typography.bodyMedium,
                     color = YellowAccent,
                     textAlign = TextAlign.Center
@@ -801,7 +807,7 @@ fun DeleteConfirmDialog(
             ) {
                 Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(4.dp))
-                Text("确认")
+                Text(stringResource(R.string.confirm))
             }
         },
         dismissButton = {
@@ -810,7 +816,7 @@ fun DeleteConfirmDialog(
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
             ) {
-                Text("取消")
+                Text(stringResource(R.string.cancel))
             }
         }
     )

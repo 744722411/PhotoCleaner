@@ -1,121 +1,79 @@
-# PhotoCleaner - 本地照片清理助手
+﻿# PhotoCleaner - 鏈湴鐓х墖娓呯悊鍔╂墜
 
 ---
 
-> ## 免责声明
+> ## 鍏嶈矗澹版槑
 >
-> 这是一个个人兴趣项目，不是商业产品。
->
-> - 使用前请先备份重要照片。
-> - 所有清理和删除操作都应仔细确认。
-> - 开发者不对任何数据丢失负责。
-> - 使用风险自负。
-
+> 杩欐槸涓€涓釜浜哄叴瓒ｉ」鐩紝涓嶆槸鍟嗕笟浜у搧銆?>
+> - 浣跨敤鍓嶈鍏堝浠介噸瑕佺収鐗囥€?> - 鎵€鏈夋竻鐞嗗拰鍒犻櫎鎿嶄綔閮藉簲浠旂粏纭銆?> - 寮€鍙戣€呬笉瀵逛换浣曟暟鎹涪澶辫礋璐ｃ€?> - 浣跨敤椋庨櫓鑷礋銆?
 ---
 
-## 应用介绍
+## 搴旂敤浠嬬粛
 
-PhotoCleaner 是一款 Android 本地照片清理助手。它可以扫描你选择的相册目录，在设备端检测明显模糊、低质量、截图/票据类、可能无用的照片，并通过 dHash 将视觉上相近的照片聚合成相似组，最后交给你在审查页逐项确认。
+PhotoCleaner 鏄竴娆?Android 鏈湴鐓х墖娓呯悊鍔╂墜銆傚畠鍙互鎵弿浣犻€夋嫨鐨勭浉鍐岀洰褰曪紝鍦ㄨ澶囩妫€娴嬫槑鏄炬ā绯娿€佷綆璐ㄩ噺銆佹埅鍥?绁ㄦ嵁绫汇€佸彲鑳芥棤鐢ㄧ殑鐓х墖锛屽苟閫氳繃 dHash 灏嗚瑙変笂鐩歌繎鐨勭収鐗囪仛鍚堟垚鐩镐技缁勶紝鏈€鍚庝氦缁欎綘鍦ㄥ鏌ラ〉閫愰」纭銆?
+浠?v1.7.1 寮€濮嬶紝椤圭洰褰诲簳绉婚櫎浜嗚繙绋?AI / OpenAI 鍏煎鍒嗙被閾捐矾銆傚簲鐢ㄤ笉鍐嶄繚瀛?API Key锛屼笉鍐嶅寘鍚?Retrofit / OkHttp / Moshi 缃戠粶鍒嗙被浠ｇ爜锛屽苟鍦?Manifest 涓樉寮忕Щ闄?`INTERNET` 鏉冮檺銆?
+## v1.7.0 鏇存柊
 
-从 v1.7.0 开始，项目彻底移除了远程 AI / OpenAI 兼容分类链路。应用不再保存 API Key，不再包含 Retrofit / OkHttp / Moshi 网络分类代码，并在 Manifest 中显式移除 `INTERNET` 权限。
+- 鎵弿鍜屾娴嬫祦绋嬪畬鍏ㄦ湰鍦板寲銆?- 绉婚櫎 OpenAI 鍏煎 API 璁剧疆銆丄PI Key 瀛樺偍銆佺綉缁滃鎴风銆丏TO 鍜岃繙绋嬪垎绫荤敤渚嬨€?- 璁剧疆椤垫敼涓哄睍绀烘湰鍦板鐞嗗拰绂荤嚎闅愮鐘舵€併€?- 棣栭〉銆佹壂鎻忛〉鍜岃缃〉鏂囨缁熶竴涓烘湰鍦板鐞嗚涔夈€?- Manifest 鏄惧紡绉婚櫎 `android.permission.INTERNET`銆?- 淇濈暀瀹℃煡椤点€? 绉掓挙閿€銆佹壒閲忓垹闄ゅ拰 Android 11+ 绯荤粺鍥炴敹绔欐彁浜よ兘鍔涖€?
+## 鍔熻兘鐗规€?
+- 鏈湴妯＄硦銆佹埅鍥俱€佺エ鎹?鏂囨。銆佷綆璐ㄩ噺鐓х墖妫€娴嬨€?- 鑷姩鍙戠幇鐩稿唽鐩綍锛屽苟鏀寔閫夋嫨鎵弿鑼冨洿銆?- 澧為噺鎵弿锛岄噸澶嶆壂鎻忔椂浼樺厛澶勭悊鏂扮収鐗囥€?- dHash 鐩镐技鐓х墖鑱氬悎銆?- 缃戞牸瀹℃煡鍜屾粦鍔ㄥ崱鐗囧鏌ャ€?- 鎵归噺閫夋嫨銆佸垹闄ょ‘璁ゅ拰鐭椂闂存挙閿€銆?- Android 11+ 浣跨敤 `MediaStore.createTrashRequest` 鎻愪氦鍒扮郴缁熷洖鏀剁珯銆?- Material 3 娣辫壊鐣岄潰銆佺幇浠ｅ崱鐗囧拰鎵弿鏃ュ織銆?
+## 鏉冮檺涓庨殣绉?
+PhotoCleaner 鍙渶瑕佽鍙栫収鐗?濯掍綋鏉冮檺鏉ユ壂鎻忔湰鍦扮浉鍐岋紝涓嶈姹傜綉缁滄潈闄愩€?
+Manifest 鐩稿叧琛屼负锛?
+- Android 13+ 浣跨敤 `READ_MEDIA_IMAGES`銆?- Android 14+ 浣跨敤 `READ_MEDIA_VISUAL_USER_SELECTED` 閫傞厤閮ㄥ垎鐓х墖璁块棶銆?- Android 12 鍙婁互涓嬩娇鐢?`READ_EXTERNAL_STORAGE`銆?- 鏄惧紡绉婚櫎 `INTERNET` 浠ュ強鍏朵粬渚濊禆鍙兘鍚堝苟杩涙潵鐨勬棤鍏虫潈闄愩€?
+## 浣跨敤鏂规硶
 
-## v1.7.0 更新
+1. 鍦?Android 8.0+ 璁惧涓婂畨瑁?APK銆?2. 鏍规嵁绯荤粺鎻愮ず鎺堟潈鐓х墖/濯掍綋璇诲彇鏉冮檺銆?3. 杩涘叆鈥滄壂鎻忊€濓紝閫夋嫨瑕佸鐞嗙殑鐩綍鍜屽崟鎵瑰鐞嗘暟閲忋€?4. 寮€濮嬫壂鎻忥紝鏌ョ湅鏈湴澶勭悊鏃ュ織銆?5. 杩涘叆鈥滃鏌モ€濓紝鎸夊缓璁竻鐞嗐€佷汉宸ュ鏌ャ€佷繚鐣欍€佺浉浼肩収鐗囩瓑瑙嗗浘閫愰」纭銆?6. 鍒犻櫎鍓嶄細浜屾纭锛涙挙閿€绐楀彛缁撴潫鍚庯紝鍙彁浜ゅ埌绯荤粺鍥炴敹绔欍€?
+## 鎶€鏈爤
 
-- 扫描和检测流程完全本地化。
-- 移除 OpenAI 兼容 API 设置、API Key 存储、网络客户端、DTO 和远程分类用例。
-- 设置页改为展示本地处理和离线隐私状态。
-- 首页、扫描页和设置页文案统一为本地处理语义。
-- Manifest 显式移除 `android.permission.INTERNET`。
-- 保留审查页、5 秒撤销、批量删除和 Android 11+ 系统回收站提交能力。
-
-## 功能特性
-
-- 本地模糊、截图、票据/文档、低质量照片检测。
-- 自动发现相册目录，并支持选择扫描范围。
-- 增量扫描，重复扫描时优先处理新照片。
-- dHash 相似照片聚合。
-- 网格审查和滑动卡片审查。
-- 批量选择、删除确认和短时间撤销。
-- Android 11+ 使用 `MediaStore.createTrashRequest` 提交到系统回收站。
-- Material 3 深色界面、现代卡片和扫描日志。
-
-## 权限与隐私
-
-PhotoCleaner 只需要读取照片/媒体权限来扫描本地相册，不请求网络权限。
-
-Manifest 相关行为：
-
-- Android 13+ 使用 `READ_MEDIA_IMAGES`。
-- Android 14+ 使用 `READ_MEDIA_VISUAL_USER_SELECTED` 适配部分照片访问。
-- Android 12 及以下使用 `READ_EXTERNAL_STORAGE`。
-- 显式移除 `INTERNET` 以及其他依赖可能合并进来的无关权限。
-
-## 使用方法
-
-1. 在 Android 8.0+ 设备上安装 APK。
-2. 根据系统提示授权照片/媒体读取权限。
-3. 进入“扫描”，选择要处理的目录和单批处理数量。
-4. 开始扫描，查看本地处理日志。
-5. 进入“审查”，按建议清理、人工审查、保留、相似照片等视图逐项确认。
-6. 删除前会二次确认；撤销窗口结束后，可提交到系统回收站。
-
-## 技术栈
-
-| 组件 | 技术 |
+| 缁勪欢 | 鎶€鏈?|
 |------|------|
-| 开发语言 | Kotlin 2.3.21 |
-| UI 框架 | Jetpack Compose + Material 3 |
-| 架构 | MVVM + Clean Architecture |
-| 依赖注入 | Hilt 2.59.2 |
-| 数据库 | Room 2.8.4 |
-| 图片加载 | Coil 3.4.0 |
-| 导航 | Navigation Compose 2.9.8 |
-| 本地 ML | ML Kit Image Labeling |
-| 偏好设置 | DataStore Preferences |
-| 最低 SDK | 26 |
-| 目标 SDK | 36 |
+| 寮€鍙戣瑷€ | Kotlin 2.3.21 |
+| UI 妗嗘灦 | Jetpack Compose + Material 3 |
+| 鏋舵瀯 | MVVM + Clean Architecture |
+| 渚濊禆娉ㄥ叆 | Hilt 2.59.2 |
+| 鏁版嵁搴?| Room 2.8.4 |
+| 鍥剧墖鍔犺浇 | Coil 3.4.0 |
+| 瀵艰埅 | Navigation Compose 2.9.8 |
+| 鏈湴 ML | ML Kit Image Labeling |
+| 鍋忓ソ璁剧疆 | DataStore Preferences |
+| 鏈€浣?SDK | 26 |
+| 鐩爣 SDK | 36 |
 
-## 构建说明
+## 鏋勫缓璇存槑
 
-前置要求：
-
+鍓嶇疆瑕佹眰锛?
 - JDK 17
 - Android SDK API 36
-- 与当前 Android Gradle Plugin 兼容的构建环境
-
-Debug 构建：
-
+- 涓庡綋鍓?Android Gradle Plugin 鍏煎鐨勬瀯寤虹幆澧?
+Debug 鏋勫缓锛?
 ```bash
 .\gradlew.bat assembleDebug
 ```
 
-Release 构建：
-
+Release 鏋勫缓锛?
 ```bash
 .\gradlew.bat assembleRelease
 ```
 
-Release 包需要单独配置签名。
-
-## 项目结构
+Release 鍖呴渶瑕佸崟鐙厤缃鍚嶃€?
+## 椤圭洰缁撴瀯
 
 ```text
 app/src/main/
-├── java/com/photocleaner/
-│   ├── data/
-│   │   ├── local/             # Room DAO、实体、数据库
-│   │   └── repository/        # 仓库实现
-│   ├── di/                    # Hilt 模块
-│   ├── domain/
-│   │   ├── model/             # Photo、Classification、DirectoryInfo
-│   │   ├── repository/        # 仓库接口
-│   │   └── usecase/           # 扫描/删除用例
-│   ├── service/               # 扫描状态持有器
-│   ├── ui/                    # 首页、扫描、审查、统计、设置
-│   └── util/                  # 图片、模糊、截图、权限工具
-└── AndroidManifest.xml
+鈹溾攢鈹€ java/com/photocleaner/
+鈹?  鈹溾攢鈹€ data/
+鈹?  鈹?  鈹溾攢鈹€ local/             # Room DAO銆佸疄浣撱€佹暟鎹簱
+鈹?  鈹?  鈹斺攢鈹€ repository/        # 浠撳簱瀹炵幇
+鈹?  鈹溾攢鈹€ di/                    # Hilt 妯″潡
+鈹?  鈹溾攢鈹€ domain/
+鈹?  鈹?  鈹溾攢鈹€ model/             # Photo銆丆lassification銆丏irectoryInfo
+鈹?  鈹?  鈹溾攢鈹€ repository/        # 浠撳簱鎺ュ彛
+鈹?  鈹?  鈹斺攢鈹€ usecase/           # 鎵弿/鍒犻櫎鐢ㄤ緥
+鈹?  鈹溾攢鈹€ service/               # 鎵弿鐘舵€佹寔鏈夊櫒
+鈹?  鈹溾攢鈹€ ui/                    # 棣栭〉銆佹壂鎻忋€佸鏌ャ€佺粺璁°€佽缃?鈹?  鈹斺攢鈹€ util/                  # 鍥剧墖銆佹ā绯娿€佹埅鍥俱€佹潈闄愬伐鍏?鈹斺攢鈹€ AndroidManifest.xml
 ```
 
-## 许可
+## 璁稿彲
 
-个人兴趣项目，不授权商业使用。
+涓汉鍏磋叮椤圭洰锛屼笉鎺堟潈鍟嗕笟浣跨敤銆?

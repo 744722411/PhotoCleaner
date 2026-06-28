@@ -1,4 +1,148 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">照片清理助手</string>
+
+    <!-- Navigation -->
+    <string name="nav_home">首页</string>
+    <string name="nav_scan">扫描</string>
+    <string name="nav_review">审查</string>
+    <string name="nav_stats">统计</string>
+    <string name="nav_settings">设置</string>
+
+    <!-- Permissions -->
+    <string name="permission_required">需要存储权限以扫描照片</string>
+    <string name="permission_grant">授权</string>
+    <string name="permission_missing_scan">未授予照片访问权限，无法开始扫描</string>
+
+    <!-- Classification -->
+    <string name="class_useless">建议清理</string>
+    <string name="class_keep">建议保留</string>
+    <string name="class_uncertain">需人工审查</string>
+    <string name="class_unknown">未分类</string>
+    <string name="class_useless_short">无用</string>
+    <string name="class_keep_short">保留</string>
+    <string name="class_uncertain_short">待定</string>
+
+    <!-- Common -->
+    <string name="cancel">取消</string>
+    <string name="confirm">确认</string>
+    <string name="delete">删除</string>
+    <string name="keep">保留</string>
+    <string name="best">最佳</string>
+    <string name="close">关闭</string>
+    <string name="undo">撤销</string>
+    <string name="commit_delete">提交删除</string>
+
+    <!-- Scan screen -->
+    <string name="scan_title">照片扫描</string>
+    <string name="scan_subtitle_processing">正在完成本地检测</string>
+    <string name="scan_subtitle_scanning">正在读取和检测本地照片</string>
+    <string name="scan_subtitle_complete">本轮处理已完成</string>
+    <string name="scan_subtitle_ready">选择目录并开始新一轮扫描</string>
+    <string name="scan_selected_dirs">已选目录</string>
+    <string name="scan_progress">扫描进度</string>
+    <string name="scan_processing_progress">处理进度</string>
+    <string name="scan_log_title">处理日志</string>
+    <string name="scan_log_count">%1$d 条</string>
+    <string name="scan_scope">扫描范围</string>
+    <string name="scan_scope_hint">先确认本轮要覆盖的目录，再决定处理数量。</string>
+    <string name="scan_discovering">正在扫描设备目录...</string>
+    <string name="scan_empty_dirs_title">先扫描设备目录</string>
+    <string name="scan_discover_dirs">发现目录</string>
+    <string name="scan_select_all">全选</string>
+    <string name="scan_deselect_all">全不选</string>
+    <string name="scan_dirs_summary">已选 %1$d 个目录，共 %2$s 张</string>
+    <string name="scan_dir_count_format">%1$s 张</string>
+    <string name="scan_batch_size">每次处理数量</string>
+    <string name="scan_batch_all">全部</string>
+    <string name="scan_start">开始扫描</string>
+    <string name="scan_paused">扫描已暂停</string>
+    <string name="scan_in_progress">正在扫描</string>
+    <string name="scan_scanned">已扫描</string>
+    <string name="scan_pause">暂停</string>
+    <string name="scan_resume">继续</string>
+    <string name="scan_stop">停止</string>
+    <string name="scan_processing_paused">处理已暂停</string>
+    <string name="scan_processing">正在处理</string>
+    <string name="scan_processed">已处理</string>
+    <string name="scan_complete_title">本轮处理完成</string>
+    <string name="scan_complete_body">共发现 %1$d 张建议清理的照片，接下来可以去审查页逐项确认。</string>
+    <string name="scan_complete_done">已完成 %1$d / %2$d 张本地检测</string>
+    <string name="scan_rescan">重新扫描</string>
+
+    <!-- Home screen -->
+    <string name="home_app_name">照片清理助手</string>
+    <string name="home_subtitle">扫描目录、本地检测、逐项确认删除</string>
+    <string name="home_coverage">当前覆盖率 %1$d%%</string>
+    <string name="home_recent">最近导入</string>
+    <string name="home_count_suffix">%1$d 张</string>
+    <string name="home_stat_total">总数</string>
+    <string name="home_stat_processed">已处理</string>
+    <string name="home_stat_useless">建议清理</string>
+    <string name="home_stat_savings">可节省</string>
+    <string name="home_quick_actions">快捷入口</string>
+    <string name="home_action_scan_title">开始扫描</string>
+    <string name="home_action_scan_sub">选择目录并读取本地照片</string>
+    <string name="home_action_review_title">审查照片</string>
+    <string name="home_action_review_sub">确认保留项和待删除项</string>
+    <string name="home_action_stats_title">查看统计</string>
+    <string name="home_action_stats_sub">检查处理分布和空间收益</string>
+    <string name="home_action_settings_title">隐私设置</string>
+    <string name="home_action_settings_sub">查看本地处理和离线状态</string>
+    <string name="home_recent_photos">最近照片</string>
+
+    <!-- Review screen -->
+    <string name="review_title">照片审查</string>
+    <string name="review_subtitle_batch">批量模式已开启</string>
+    <string name="review_subtitle_normal">逐张确认保留或删除</string>
+    <string name="review_empty_similar_title">没有相似照片</string>
+    <string name="review_empty_similar_sub">当前没有发现连续拍摄或内容非常接近的照片</string>
+    <string name="review_empty_title">当前分类为空</string>
+    <string name="review_empty_sub">换个筛选看看，或者先去扫描新照片</string>
+    <string name="review_summary_similar">相似组</string>
+    <string name="review_summary_result">当前结果</string>
+    <string name="review_group_count">%1$d 组</string>
+    <string name="review_photo_count">%1$d 张</string>
+    <string name="review_selected">已选 %1$d</string>
+    <string name="review_pending">待提交 %1$d</string>
+    <string name="review_marked">已标记 %1$d 张照片</string>
+    <string name="review_pending_submit">待提交 %1$d 张到系统回收站</string>
+    <string name="review_similar_group">相似照片组</string>
+    <string name="review_similar_candidates">%1$d 张候选</string>
+    <string name="review_keep_best">保留最佳</string>
+    <string name="review_confirm_delete_title">确认删除</string>
+    <string name="review_confirm_delete_count">即将标记 %1$d 张照片</string>
+    <string name="review_confirm_delete_body">确认后会先进入待提交状态，随后由系统回收站完成删除。</string>
+    <string name="filter_all">全部</string>
+    <string name="filter_similar">相似</string>
+    <string name="filter_large">超大媒体</string>
+    <string name="filter_useless">建议清理</string>
+    <string name="filter_uncertain">人工审查</string>
+    <string name="filter_keep">保留</string>
+
+    <!-- Stats screen -->
+    <string name="stats_title">照片统计</string>
+    <string name="stats_subtitle">查看照片处理数据与存储分析</string>
+    <string name="stats_total">照片总数</string>
+    <string name="stats_processed">已处理</string>
+    <string name="stats_useless">无用照片</string>
+    <string name="stats_savings">可节省</string>
+    <string name="stats_breakdown">分类明细</string>
+    <string name="stats_distribution">类别分布</string>
+    <string name="stats_count_format">%1$d 张</string>
+    <string name="stats_count_percent">%1$d 张(%2$d%%)</string>
+
+    <!-- Settings screen -->
+    <string name="settings_title">设置</string>
+    <string name="settings_subtitle">本地扫描与隐私状态</string>
+    <string name="settings_privacy">隐私保护</string>
+    <string name="settings_offline">离线</string>
+    <string name="settings_online">联网</string>
+    <string name="settings_net_removed_title">网络接口已移除</string>
+    <string name="settings_net_removed_desc">应用不再保存联网配置，也不会调用网络分类服务。</string>
+    <string name="settings_local_title">照片只在设备上处理</string>
+    <string name="settings_local_desc">目录扫描、清晰度判断、截图识别和相似检测都走本地逻辑。</string>
+    <string name="settings_confirm_title">清理前仍需确认</string>
+    <string name="settings_confirm_desc">扫描结果会进入审查页，删除前可以逐张确认或撤销。</string>
+    <string name="settings_footer">当前版本专注本地照片清理，不需要任何联网分类配置。</string>
 </resources>

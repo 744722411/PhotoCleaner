@@ -2,7 +2,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- ✅ 我们真正需要的权限 -->
     <!-- 读取图片（Android 13+） -->
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     <!-- Android 14+ 部分照片访问 -->
@@ -11,7 +10,7 @@
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
         android:maxSdkVersion="32" />
 
-    <!-- ❌ 显式移除依赖库可能注入的多余权限（MIUI等系统会显示） -->
+    <!-- 显式移除依赖库可能注入的多余权限 -->
     <uses-permission android:name="android.permission.SEND_SMS" tools:node="remove" />
     <uses-permission android:name="android.permission.READ_SMS" tools:node="remove" />
     <uses-permission android:name="android.permission.RECEIVE_SMS" tools:node="remove" />
@@ -32,7 +31,11 @@
     <application
         android:name=".PhotoCleanerApp"
         android:allowBackup="true"
-        android:icon="@drawable/ic_launcher_legacy"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:enableOnBackInvokedCallback="true"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
         android:label="@string/app_name"
         android:supportsRtl="true"
         android:theme="@style/Theme.PhotoCleaner">
