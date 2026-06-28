@@ -70,9 +70,7 @@ class ScanViewModel @Inject constructor(
 
     fun showDirectoryPicker() {
         localState.update { it.copy(showDirectoryPicker = true) }
-        if (localState.value.discoveredDirectories.isEmpty() && !localState.value.isDiscoveringDirs) {
-            discoverDirectories()
-        }
+        discoverDirectories()
     }
 
     fun hideDirectoryPicker() {

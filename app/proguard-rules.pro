@@ -20,3 +20,9 @@
 -keepclasseswithmembers class * {
     kotlinx.serialization.SerialName <fields>;
 }
+
+# Navigation Type-safe Routes Protection
+-keep @kotlinx.serialization.Serializable class * { *; }
+-keepclassmembers class * {
+    @kotlinx.serialization.Serializable *;
+}

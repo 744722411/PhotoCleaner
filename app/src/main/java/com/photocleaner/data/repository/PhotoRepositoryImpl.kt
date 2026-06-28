@@ -154,17 +154,16 @@ class PhotoRepositoryImpl @Inject constructor(
 
                 val relativePath = cursor.getString(relPathCol)
                 val fullPath = cursor.getString(dataCol)
+
                 val dir = when {
-                    !relativePath.isNullOrBlank() -> relativePath.trimEnd('/')
+                    !relativePath.isNullOrBlank() -> relativePath.trim('/')
                     !fullPath.isNullOrBlank() -> {
-                        val idx = fullPath.indexOf("/Android/data/")
-                        if (idx > 0) {
-                            fullPath.substring(0, idx).substringAfterLast("emulated/0/")
-                                .substringAfterLast("storage/emulated/0/")
-                        } else {
-                            fullPath.substringAfterLast("emulated/0/")
-                                .substringAfterLast("storage/emulated/0/")
-                        }.trimEnd('/')
+                        val parentPath = File(fullPath).parent ?: ""
+                        if (parentPath.isNotBlank()) {
+                            parentPath.substringAfter("emulated/0/")
+                                .substringAfter("storage/emulated/0/")
+                                .trim('/')
+                        } else ""
                     }
                     else -> continue
                 }
