@@ -64,21 +64,25 @@ class PhotoRepositoryImpl @Inject constructor(
             MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
             projection, null, null, sortOrder
         )?.use { cursor ->
-            val idCol = cursor.getColumnIndexOrThrow(MediaStore.Images.Media._ID)
-            val nameCol = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DISPLAY_NAME)
-            val mimeCol = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.MIME_TYPE)
-            val widthCol = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.WIDTH)
-            val heightCol = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.HEIGHT)
-            val sizeCol = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.SIZE)
-            val dateAddedCol = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATE_ADDED)
-            val dateModCol = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATE_MODIFIED)
-            val relPathCol = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.RELATIVE_PATH)
-            val dataCol = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATA)
+            val idCol = cursor.getColumnIndex(MediaStore.Images.Media._ID)
+            val nameCol = cursor.getColumnIndex(MediaStore.Images.Media.DISPLAY_NAME)
+            val mimeCol = cursor.getColumnIndex(MediaStore.Images.Media.MIME_TYPE)
+            val widthCol = cursor.getColumnIndex(MediaStore.Images.Media.WIDTH)
+            val heightCol = cursor.getColumnIndex(MediaStore.Images.Media.HEIGHT)
+            val sizeCol = cursor.getColumnIndex(MediaStore.Images.Media.SIZE)
+            val dateAddedCol = cursor.getColumnIndex(MediaStore.Images.Media.DATE_ADDED)
+            val dateModCol = cursor.getColumnIndex(MediaStore.Images.Media.DATE_MODIFIED)
+            val relPathCol = cursor.getColumnIndex(MediaStore.Images.Media.RELATIVE_PATH)
+            val dataCol = cursor.getColumnIndex(MediaStore.Images.Media.DATA)
+
+            if (idCol < 0 || nameCol < 0 || mimeCol < 0 || widthCol < 0 || heightCol < 0 || sizeCol < 0 || dateAddedCol < 0 || dateModCol < 0) {
+                return@use
+            }
 
             while (cursor.moveToNext()) {
                 if (useDirectoryFilter) {
-                    val relativePath = cursor.getString(relPathCol) ?: ""
-                    val fullPath = cursor.getString(dataCol) ?: ""
+                    val relativePath = if (relPathCol >= 0) cursor.getString(relPathCol) ?: "" else ""
+                    val fullPath = if (dataCol >= 0) cursor.getString(dataCol) ?: "" else ""
                     val matchesAny = selectedDirectories.any { dir ->
                         relativePath.startsWith(dir, ignoreCase = true) ||
                         fullPath.contains("/$dir/", ignoreCase = true) ||
@@ -103,7 +107,7 @@ class PhotoRepositoryImpl @Inject constructor(
                         size = cursor.getLong(sizeCol),
                         dateAdded = cursor.getLong(dateAddedCol),
                         dateModified = cursor.getLong(dateModCol),
-                        filePath = cursor.getString(dataCol) ?: ""
+                        filePath = if (dataCol >= 0) cursor.getString(dataCol) ?: "" else ""
                     )
                 )
             }
@@ -139,11 +143,13 @@ class PhotoRepositoryImpl @Inject constructor(
             MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
             projection, null, null, null
         )?.use { cursor ->
-            val relPathCol = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.RELATIVE_PATH)
-            val dataCol = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATA)
-            val sizeCol = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.SIZE)
-            val widthCol = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.WIDTH)
-            val heightCol = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.HEIGHT)
+            val relPathCol = cursor.getColumnIndex(MediaStore.Images.Media.RELATIVE_PATH)
+            val dataCol = cursor.getColumnIndex(MediaStore.Images.Media.DATA)
+            val sizeCol = cursor.getColumnIndex(MediaStore.Images.Media.SIZE)
+            val widthCol = cursor.getColumnIndex(MediaStore.Images.Media.WIDTH)
+            val heightCol = cursor.getColumnIndex(MediaStore.Images.Media.HEIGHT)
+
+            if (sizeCol < 0 || widthCol < 0 || heightCol < 0) return@use
 
             while (cursor.moveToNext()) {
                 val size = cursor.getLong(sizeCol)
@@ -152,8 +158,8 @@ class PhotoRepositoryImpl @Inject constructor(
                 if (size < MIN_FILE_SIZE) continue
                 if (width < MIN_DIMENSION || height < MIN_DIMENSION) continue
 
-                val relativePath = cursor.getString(relPathCol)
-                val fullPath = cursor.getString(dataCol)
+                val relativePath = if (relPathCol >= 0) cursor.getString(relPathCol) else null
+                val fullPath = if (dataCol >= 0) cursor.getString(dataCol) else null
 
                 val dir = when {
                     !relativePath.isNullOrBlank() -> relativePath.trim('/')

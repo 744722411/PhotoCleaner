@@ -198,7 +198,6 @@ class ScanViewModel @Inject constructor(
                 scanStateHolder.addLog(ScanLogEntry(message = "开始扫描照片...", status = LogStatus.INFO))
 
                 val batchSize = settingsRepository.getBatchSizeSync()
-
                 if (batchSize > 0) {
                     scanStateHolder.addLog(
                         ScanLogEntry(
@@ -208,29 +207,43 @@ class ScanViewModel @Inject constructor(
                     )
                 }
 
-                val scannedPhotos = scanPhotosUseCase(
-                    selectedDirectories = selectedDirectories,
-                    batchSize = batchSize,
-                    isPaused = { scanStateHolder.uiState.value.isPaused },
-                    onProgress = { scanned, total ->
-                        scanStateHolder.updateState { it.copy(scannedCount = scanned, totalToScan = total) }
-                    },
-                    onLog = { log ->
-                        scanStateHolder.addLog(
-                            ScanLogEntry(
-                                photoName = log.photoName,
-                                status = when (log.status) {
-                                    ScanLogStatus.PROCESSING -> LogStatus.PROCESSING
-                                    ScanLogStatus.LOCAL_HIT -> LogStatus.LOCAL_HIT
-                                    ScanLogStatus.SUCCESS -> LogStatus.SUCCESS
-                                    ScanLogStatus.ERROR -> LogStatus.ERROR
-                                    ScanLogStatus.INFO -> LogStatus.INFO
-                                },
-                                message = log.message
+                val scannedPhotos = try {
+                    scanPhotosUseCase(
+                        selectedDirectories = selectedDirectories,
+                        batchSize = batchSize,
+                        isPaused = { scanStateHolder.uiState.value.isPaused },
+                        onProgress = { scanned, total ->
+                            scanStateHolder.updateState { it.copy(scannedCount = scanned, totalToScan = total) }
+                        },
+                        onLog = { log ->
+                            scanStateHolder.addLog(
+                                ScanLogEntry(
+                                    photoName = log.photoName,
+                                    status = when (log.status) {
+                                        ScanLogStatus.PROCESSING -> LogStatus.PROCESSING
+                                        ScanLogStatus.LOCAL_HIT -> LogStatus.LOCAL_HIT
+                                        ScanLogStatus.SUCCESS -> LogStatus.SUCCESS
+                                        ScanLogStatus.ERROR -> LogStatus.ERROR
+                                        ScanLogStatus.INFO -> LogStatus.INFO
+                                    },
+                                    message = log.message
+                                )
                             )
+                        }
+                    )
+                } catch (e: Exception) {
+                    scanStateHolder.updateState {
+                        it.copy(
+                            isScanning = false,
+                            isProcessing = false,
+                            error = e.message ?: "扫描失败"
                         )
                     }
-                )
+                    scanStateHolder.addLog(
+                        ScanLogEntry(message = "扫描失败: ${e.message}", status = LogStatus.ERROR)
+                    )
+                    return@launch
+                }
 
                 val allPhotos = photoRepository.getAllPhotos().first()
                 val uselessCount = allPhotos.count { it.classification == Classification.USELESS && !it.isInTrash }
