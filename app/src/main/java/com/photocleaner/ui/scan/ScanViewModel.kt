@@ -237,7 +237,7 @@ class ScanViewModel @Inject constructor(
                         totalToProcess = scannedPhotos.size
                     )
                 }
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
                 if (e !is CancellationException) {
                     scanStateHolder.updateState {
                         it.copy(

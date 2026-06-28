@@ -88,7 +88,7 @@ class PhotoClassifierImpl @Inject constructor(
                             break
                         }
                     }
-                } catch (_: Exception) {
+                } catch (_: Throwable) {
                     // ML Kit optional — fall through to plain dHash result
                 }
 
@@ -108,7 +108,7 @@ class PhotoClassifierImpl @Inject constructor(
             } finally {
                 bitmap.recycle()
             }
-        } catch (_: Exception) {
+        } catch (_: Throwable) {
             photo
         }
     }

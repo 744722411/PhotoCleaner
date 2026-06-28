@@ -67,7 +67,7 @@ class ScanPhotosUseCase @Inject constructor(
         val results = mutableListOf<Photo>()
         val pendingInsert = mutableListOf<Photo>()
         val completed = AtomicInteger(0)
-        val classifyDispatcher = Dispatchers.IO.limitedParallelism(CLASSIFY_PARALLELISM)
+        val classifyDispatcher = Dispatchers.IO
 
         limited.chunked(CLASSIFY_PARALLELISM).forEach { chunk ->
             while (isPaused()) {
