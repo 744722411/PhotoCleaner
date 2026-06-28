@@ -19,18 +19,10 @@ android {
         versionCode = 17
         versionName = "1.7.1"
         testInstrumentationRunner = "dagger.hilt.android.testing.HiltTestRunner"
-
-        ndk {
-            abiFilters += listOf("arm64-v8a")
-        }
     }
 
     buildTypes {
         debug {
-            // Allow running on x86_64 emulators / CI while keeping release lean
-            ndk {
-                abiFilters += listOf("arm64-v8a", "x86-64")
-            }
         }
         release {
             isMinifyEnabled = true

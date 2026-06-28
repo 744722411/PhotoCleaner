@@ -22,10 +22,6 @@ class PhotoClassifierImpl @Inject constructor(
     @ApplicationContext private val context: Context
 ) : PhotoClassifier {
 
-    private val labeler by lazy {
-        ImageLabeling.getClient(ImageLabelerOptions.DEFAULT_OPTIONS)
-    }
-
     override suspend fun classify(photo: Photo): Photo {
         return try {
             val uri = Uri.parse(photo.uri)
@@ -78,6 +74,7 @@ class PhotoClassifierImpl @Inject constructor(
                 var mlKitCategory = ""
                 var mlKitClassification: Classification? = null
                 try {
+                    val labeler = ImageLabeling.getClient(ImageLabelerOptions.DEFAULT_OPTIONS)
                     val inputImage = InputImage.fromBitmap(bitmap, 0)
                     val labels = labeler.process(inputImage).await()
                     val documentLabels = setOf("Receipt", "Document", "Text", "Font", "Barcode")

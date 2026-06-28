@@ -380,7 +380,8 @@ fun ScanProgressContent(
             Text(text = if (uiState.isPaused) "已暂停" else "正在扫描...", style = MaterialTheme.typography.titleLarge, color = Color.White)
             Spacer(modifier = Modifier.height(12.dp))
             if (uiState.totalToScan > 0) {
-                GradientProgressBar(progress = uiState.scannedCount.toFloat() / uiState.totalToScan, modifier = Modifier.fillMaxWidth())
+                val progress = uiState.scannedCount.toFloat() / uiState.totalToScan
+                GradientProgressBar(progress = if (progress.isNaN() || progress.isInfinite()) 0f else progress, modifier = Modifier.fillMaxWidth())
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text(text = "已扫描", style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.6f))
@@ -431,7 +432,8 @@ fun ProcessingProgressContent(
             Text(text = if (uiState.isProcessingPaused) "本地检测已暂停" else "本地检测中...", style = MaterialTheme.typography.titleLarge, color = Color.White)
             Spacer(modifier = Modifier.height(12.dp))
             if (uiState.totalToProcess > 0) {
-                GradientProgressBar(progress = uiState.processedCount.toFloat() / uiState.totalToProcess, modifier = Modifier.fillMaxWidth(), gradient = Brush.horizontalGradient(listOf(GreenAccent, Color(0xFF2E7D32))))
+                val progress = uiState.processedCount.toFloat() / uiState.totalToProcess
+                GradientProgressBar(progress = if (progress.isNaN() || progress.isInfinite()) 0f else progress, modifier = Modifier.fillMaxWidth(), gradient = Brush.horizontalGradient(listOf(GreenAccent, Color(0xFF2E7D32))))
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text(text = "已检测", style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.6f))
