@@ -3,6 +3,7 @@ package com.photocleaner.data.repository
 import android.content.ContentUris
 import android.content.Context
 import android.net.Uri
+import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
 import com.photocleaner.data.local.PhotoDao
@@ -52,10 +53,8 @@ class PhotoRepositoryImpl @Inject constructor(
             MediaStore.Images.Media.HEIGHT,
             MediaStore.Images.Media.SIZE,
             MediaStore.Images.Media.DATE_ADDED,
-            MediaStore.Images.Media.DATE_MODIFIED,
-            MediaStore.Images.Media.RELATIVE_PATH,
-            MediaStore.Images.Media.DATA
-        )
+            MediaStore.Images.Media.DATE_MODIFIED
+        ) + mediaPathProjection()
 
         val useDirectoryFilter = selectedDirectories.isNotEmpty()
         val sortOrder = "${MediaStore.Images.Media.DATE_ADDED} DESC"
@@ -72,8 +71,16 @@ class PhotoRepositoryImpl @Inject constructor(
             val sizeCol = cursor.getColumnIndex(MediaStore.Images.Media.SIZE)
             val dateAddedCol = cursor.getColumnIndex(MediaStore.Images.Media.DATE_ADDED)
             val dateModCol = cursor.getColumnIndex(MediaStore.Images.Media.DATE_MODIFIED)
-            val relPathCol = cursor.getColumnIndex(MediaStore.Images.Media.RELATIVE_PATH)
-            val dataCol = cursor.getColumnIndex(MediaStore.Images.Media.DATA)
+            val relPathCol = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                cursor.getColumnIndex(MediaStore.Images.Media.RELATIVE_PATH)
+            } else {
+                -1
+            }
+            val dataCol = if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+                cursor.getColumnIndex(MediaStore.Images.Media.DATA)
+            } else {
+                -1
+            }
 
             if (idCol < 0 || nameCol < 0 || mimeCol < 0 || widthCol < 0 || heightCol < 0 || sizeCol < 0 || dateAddedCol < 0 || dateModCol < 0) {
                 return@use
@@ -132,19 +139,25 @@ class PhotoRepositoryImpl @Inject constructor(
     override suspend fun discoverDirectories(): List<DirectoryInfo> = withContext(Dispatchers.IO) {
         val dirCounts = mutableMapOf<String, Int>()
         val projection = arrayOf(
-            MediaStore.Images.Media.RELATIVE_PATH,
-            MediaStore.Images.Media.DATA,
             MediaStore.Images.Media.SIZE,
             MediaStore.Images.Media.WIDTH,
             MediaStore.Images.Media.HEIGHT
-        )
+        ) + mediaPathProjection()
 
         context.contentResolver.query(
             MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
             projection, null, null, null
         )?.use { cursor ->
-            val relPathCol = cursor.getColumnIndex(MediaStore.Images.Media.RELATIVE_PATH)
-            val dataCol = cursor.getColumnIndex(MediaStore.Images.Media.DATA)
+            val relPathCol = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                cursor.getColumnIndex(MediaStore.Images.Media.RELATIVE_PATH)
+            } else {
+                -1
+            }
+            val dataCol = if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+                cursor.getColumnIndex(MediaStore.Images.Media.DATA)
+            } else {
+                -1
+            }
             val sizeCol = cursor.getColumnIndex(MediaStore.Images.Media.SIZE)
             val widthCol = cursor.getColumnIndex(MediaStore.Images.Media.WIDTH)
             val heightCol = cursor.getColumnIndex(MediaStore.Images.Media.HEIGHT)
@@ -272,4 +285,11 @@ class PhotoRepositoryImpl @Inject constructor(
     }
 
     override suspend fun clearAll() = photoDao.clearAll()
+
+    private fun mediaPathProjection(): Array<String> =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            arrayOf(MediaStore.Images.Media.RELATIVE_PATH)
+        } else {
+            arrayOf(MediaStore.Images.Media.DATA)
+        }
 }
