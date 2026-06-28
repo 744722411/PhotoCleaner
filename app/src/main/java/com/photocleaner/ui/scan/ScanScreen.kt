@@ -115,11 +115,14 @@ fun ScanScreen(
         }
     }
 
-    val gradientColors = remember {
+    val primaryColor = MaterialTheme.colorScheme.primary
+    val secondaryColor = MaterialTheme.colorScheme.secondary
+    val backgroundColor = MaterialTheme.colorScheme.background
+    val gradientColors = remember(primaryColor, secondaryColor, backgroundColor) {
         listOf(
-            MaterialTheme.colorScheme.primary.copy(alpha = 0.10f),
-            MaterialTheme.colorScheme.secondary.copy(alpha = 0.08f),
-            MaterialTheme.colorScheme.background
+            primaryColor.copy(alpha = 0.10f),
+            secondaryColor.copy(alpha = 0.08f),
+            backgroundColor
         )
     }
 
@@ -172,7 +175,7 @@ private fun ScanHeader(uiState: ScanUiState) {
             Column {
                 Text(stringResource(R.string.scan_title), style = MaterialTheme.typography.headlineMedium, color = Color.White, fontWeight = FontWeight.Bold)
                 Text(text = when {
-                    uiState.isProcessing || uiState.isProcessingPaused -> stringResource(R.string.scan_subtitle_classifying)
+                    uiState.isProcessing || uiState.isProcessingPaused -> stringResource(R.string.scan_subtitle_processing)
                     uiState.isScanning || uiState.isPaused -> stringResource(R.string.scan_subtitle_scanning)
                     uiState.processingComplete -> stringResource(R.string.scan_subtitle_complete)
                     else -> stringResource(R.string.scan_subtitle_ready)
@@ -215,7 +218,7 @@ fun ScanLogPanel(logs: List<ScanLogEntry>) {
 
 @Composable
 fun ScanLogItem(entry: ScanLogEntry) {
-    val (icon, color): Pair<ImageVector, Color> = when (entry.status) {
+    val (icon, color) = when (entry.status) {
         LogStatus.PROCESSING -> Icons.Default.HourglassTop to YellowAccent
         LogStatus.SUCCESS -> Icons.Default.CheckCircle to GreenAccent
         LogStatus.LOCAL_HIT -> Icons.Default.TipsAndUpdates to YellowAccent
@@ -262,6 +265,135 @@ fun ScanReadyContent(
                 OutlinedButton(onClick = if (isAllSelected) onDeselectAll else onSelectAll, enabled = discoveredDirectories.isNotEmpty()) { Icon(if (isAllSelected) Icons.Default.CheckBoxOutlineBlank else Icons.Default.CheckBox, contentDescription = null); Spacer(Modifier.width(8.dp)); Text(if (isAllSelected) stringResource(R.string.scan_deselect_all) else stringResource(R.string.scan_select_all)) }
             }
             Button(onClick = onStartScan, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Default.Search, contentDescription = null); Spacer(Modifier.width(8.dp)); Text(stringResource(R.string.scan_start)) }
+        }
+    }
+}
+
+@Composable
+fun ScanProgressContent(
+    uiState: ScanUiState,
+    onPauseScan: () -> Unit,
+    onResumeScan: () -> Unit,
+    onStopScan: () -> Unit
+) {
+    GlassCard(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            CircularProgressIndicator(modifier = Modifier.size(60.dp), color = BlueAccent, strokeWidth = 5.dp, trackColor = BlueAccent.copy(alpha = 0.2f))
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(text = if (uiState.isPaused) "已暂停" else "正在扫描...", style = MaterialTheme.typography.titleLarge, color = Color.White)
+            Spacer(modifier = Modifier.height(12.dp))
+            if (uiState.totalToScan > 0) {
+                GradientProgressBar(progress = uiState.scannedCount.toFloat() / uiState.totalToScan, modifier = Modifier.fillMaxWidth())
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text(text = "已扫描", style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.6f))
+                    Text(text = "${uiState.scannedCount} / ${uiState.totalToScan}", style = MaterialTheme.typography.titleMedium, color = BlueAccent, fontWeight = FontWeight.Bold)
+                }
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                OutlinedButton(
+                    onClick = if (uiState.isPaused) onResumeScan else onPauseScan,
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = YellowAccent)
+                ) {
+                    Icon(if (uiState.isPaused) Icons.Default.PlayArrow else Icons.Default.Pause, contentDescription = null)
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(if (uiState.isPaused) "继续" else "暂停")
+                }
+                OutlinedButton(
+                    onClick = onStopScan,
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = RedAccent)
+                ) {
+                    Icon(Icons.Default.Stop, contentDescription = null)
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("停止")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ProcessingProgressContent(
+    uiState: ScanUiState,
+    onPauseProcessing: () -> Unit,
+    onResumeProcessing: () -> Unit,
+    onStopProcessing: () -> Unit
+) {
+    GlassCard(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            CircularProgressIndicator(modifier = Modifier.size(60.dp), color = GreenAccent, strokeWidth = 5.dp, trackColor = GreenAccent.copy(alpha = 0.2f))
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(text = if (uiState.isProcessingPaused) "本地检测已暂停" else "本地检测中...", style = MaterialTheme.typography.titleLarge, color = Color.White)
+            Spacer(modifier = Modifier.height(12.dp))
+            if (uiState.totalToProcess > 0) {
+                GradientProgressBar(progress = uiState.processedCount.toFloat() / uiState.totalToProcess, modifier = Modifier.fillMaxWidth(), gradient = Brush.horizontalGradient(listOf(GreenAccent, Color(0xFF2E7D32))))
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text(text = "已检测", style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.6f))
+                    Text(text = "${uiState.processedCount} / ${uiState.totalToProcess}", style = MaterialTheme.typography.titleMedium, color = GreenAccent, fontWeight = FontWeight.Bold)
+                }
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                OutlinedButton(
+                    onClick = if (uiState.isProcessingPaused) onResumeProcessing else onPauseProcessing,
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = YellowAccent)
+                ) {
+                    Icon(if (uiState.isProcessingPaused) Icons.Default.PlayArrow else Icons.Default.Pause, contentDescription = null)
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(if (uiState.isProcessingPaused) "继续" else "暂停")
+                }
+                OutlinedButton(
+                    onClick = onStopProcessing,
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = RedAccent)
+                ) {
+                    Icon(Icons.Default.Stop, contentDescription = null)
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("停止")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ProcessingCompleteContent(uiState: ScanUiState, onReset: () -> Unit) {
+    GlassCard(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Box(modifier = Modifier.size(60.dp).clip(CircleShape).background(YellowAccent.copy(alpha = 0.2f)), contentAlignment = Alignment.Center) {
+                Icon(imageVector = Icons.Default.Celebration, contentDescription = null, modifier = Modifier.size(36.dp), tint = YellowAccent)
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(text = "本地处理完成！", style = MaterialTheme.typography.titleLarge, color = Color.White)
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(text = "发现 ${uiState.uselessFound} 张疑似无用照片\n前往\"审查\"页面查看并清理", style = MaterialTheme.typography.bodyLarge, color = Color.White.copy(alpha = 0.8f), textAlign = TextAlign.Center)
+            Spacer(modifier = Modifier.height(24.dp))
+            OutlinedButton(
+                onClick = onReset,
+                modifier = Modifier.fillMaxWidth().height(56.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Icon(Icons.Default.Refresh, contentDescription = null)
+                    Text("重新扫描", fontSize = 16.sp)
+                }
+            }
         }
     }
 }

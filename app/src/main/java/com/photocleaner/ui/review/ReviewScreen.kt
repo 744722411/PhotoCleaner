@@ -101,11 +101,14 @@ fun ReviewScreen(
     var isPendingBatchDelete by remember { mutableStateOf(false) }
     var isGridView by remember { mutableStateOf(true) }
 
-    val gradientColors = remember {
+    val primaryColor = MaterialTheme.colorScheme.primary
+    val secondaryColor = MaterialTheme.colorScheme.secondary
+    val backgroundColor = MaterialTheme.colorScheme.background
+    val gradientColors = remember(primaryColor, secondaryColor, backgroundColor) {
         listOf(
-            MaterialTheme.colorScheme.primary.copy(alpha = 0.10f),
-            MaterialTheme.colorScheme.secondary.copy(alpha = 0.08f),
-            MaterialTheme.colorScheme.background
+            primaryColor.copy(alpha = 0.10f),
+            secondaryColor.copy(alpha = 0.08f),
+            backgroundColor
         )
     }
 
@@ -184,7 +187,7 @@ fun ReviewScreen(
                                         SimilarGroupCard(
                                             group = group,
                                             onKeepBest = { viewModel.keepBestInGroup(group) },
-                                            onPhotoClick = { viewModel.showDetail(it) }
+                                            onPhotoClick = { viewModel.selectPhotoForDetail(it) }
                                         )
                                     }
                                 }
@@ -220,7 +223,7 @@ fun ReviewScreen(
                                             showDeleteConfirmDialog = true
                                         },
                                         onKeep = { viewModel.keepPhoto(photo) },
-                                        onClick = { viewModel.showDetail(photo) }
+                                        onClick = { viewModel.selectPhotoForDetail(photo) }
                                     )
                                 }
                             }
@@ -253,16 +256,16 @@ fun ReviewScreen(
     uiState.detailPhoto?.let { photo ->
         PhotoDetailDialog(
             photo = photo,
-            onDismiss = { viewModel.hideDetail() },
+            onDismiss = { viewModel.clearDetailPhoto() },
             onDelete = {
                 pendingDeletePhotos = listOf(photo)
                 isPendingBatchDelete = false
                 showDeleteConfirmDialog = true
-                viewModel.hideDetail()
+                viewModel.clearDetailPhoto()
             },
             onKeep = {
                 viewModel.keepPhoto(photo)
-                viewModel.hideDetail()
+                viewModel.clearDetailPhoto()
             }
         )
     }
@@ -458,6 +461,7 @@ private fun ReviewSwipeContent(
         val topPhoto = photos.first()
         if (photos.size > 1) {
             val nextPhoto = photos[1]
+            val context = LocalContext.current
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -467,8 +471,8 @@ private fun ReviewSwipeContent(
                     .background(DarkSurfaceVariant.copy(alpha = 0.45f))
             ) {
                 AsyncImage(
-                    model = remember(nextPhoto.uri) {
-                        ImageRequest.Builder(LocalContext.current)
+                    model = remember(context, nextPhoto.uri) {
+                        ImageRequest.Builder(context)
                             .data(nextPhoto.uri)
                             .crossfade(true)
                             .build()

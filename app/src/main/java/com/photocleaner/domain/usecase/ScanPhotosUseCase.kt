@@ -5,6 +5,7 @@ import com.photocleaner.domain.repository.PhotoRepository
 import com.photocleaner.domain.service.PhotoClassifier
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
@@ -79,7 +80,7 @@ class ScanPhotosUseCase @Inject constructor(
 
             val chunkResults = coroutineScope {
                 chunk.map { photo ->
-                    kotlinx.coroutines.async(classifyDispatcher) {
+                    async(classifyDispatcher) {
                         try {
                             classifier.classify(photo)
                         } catch (e: CancellationException) {

@@ -112,9 +112,9 @@ class PhotoRepositoryImpl @Inject constructor(
     }
 
     companion object {
-        private const val MIN_IMAGE_COUNT = 3
-        private const val MIN_FILE_SIZE = 100 * 1024L
-        private const val MIN_DIMENSION = 200
+        private const val MIN_IMAGE_COUNT = 1
+        private const val MIN_FILE_SIZE = 10 * 1024L
+        private const val MIN_DIMENSION = 100
         private val EXCLUDED_DIR_PATTERNS = listOf(
             "drawable", "assets", "res", "mipmap",
             "emoji", "sticker", "emoticon",

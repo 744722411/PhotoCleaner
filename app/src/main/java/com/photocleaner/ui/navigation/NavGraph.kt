@@ -5,8 +5,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Preview
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -45,7 +47,7 @@ sealed class Screen(val route: Any, val titleRes: Int, val icon: ImageVector) {
     data object Scan : Screen(ScanRoute, R.string.nav_scan, Icons.Default.CameraAlt)
     data object Review : Screen(ReviewRoute, R.string.nav_review, Icons.Default.Preview)
     data object Stats : Screen(StatsRoute, R.string.nav_stats, Icons.Default.BarChart)
-    data object Settings : Screen(SettingsRoute, R.string.nav_settings, Icons.Default.Settings)
+    data object Settings : Screen(SettingsRoute, R.string.nav_settings, Icons.Default.Info)
 }
 
 @Composable

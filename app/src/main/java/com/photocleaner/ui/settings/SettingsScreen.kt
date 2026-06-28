@@ -47,11 +47,14 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val gradientColors = remember {
+    val primaryColor = MaterialTheme.colorScheme.primary
+    val secondaryColor = MaterialTheme.colorScheme.secondary
+    val backgroundColor = MaterialTheme.colorScheme.background
+    val gradientColors = remember(primaryColor, secondaryColor, backgroundColor) {
         listOf(
-            MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
-            MaterialTheme.colorScheme.secondary.copy(alpha = 0.08f),
-            MaterialTheme.colorScheme.background
+            primaryColor.copy(alpha = 0.12f),
+            secondaryColor.copy(alpha = 0.08f),
+            backgroundColor
         )
     }
 

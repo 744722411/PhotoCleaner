@@ -240,4 +240,16 @@ class ReviewViewModel @Inject constructor(
 
     fun selectPhotoForDetail(photo: Photo) { _uiState.update { it.copy(detailPhoto = photo) } }
     fun clearDetailPhoto() { _uiState.update { it.copy(detailPhoto = null) } }
+
+    fun keepPhoto(photo: Photo) {
+        viewModelScope.launch {
+            try {
+                repository.updateClassification(photo.id, Classification.KEEP, 1.0f, "user_kept")
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _uiState.update { it.copy(error = e.message ?: "保留操作失败") }
+            }
+        }
+    }
 }
