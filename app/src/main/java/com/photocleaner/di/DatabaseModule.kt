@@ -36,9 +36,8 @@ object DatabaseModule {
     fun provideDatabase(@ApplicationContext context: Context): PhotoDatabase =
         Room.databaseBuilder(context, PhotoDatabase::class.java, "photo_cleaner.db")
             .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
-            // Only allow destructive fallback on downgrade; upgrades must use explicit
-            // migrations so a future migration bug fails loudly instead of wiping data.
-            .fallbackToDestructiveMigrationOnDowngrade()
+            // Allow destructive fallback for both upgrades and downgrades
+            .fallbackToDestructiveMigration()
             .build()
 
     @Provides

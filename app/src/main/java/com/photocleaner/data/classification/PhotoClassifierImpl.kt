@@ -51,8 +51,7 @@ class PhotoClassifierImpl @Inject constructor(
                 BitmapFactory.decodeStream(stream, null, BitmapFactory.Options().apply { inSampleSize = sampleSize })
             } ?: return photo
 
-            try {
-                if (ImageUtils.isBlank(bitmap)) {
+            if (ImageUtils.isBlank(bitmap)) {
                     return photo.copy(
                         isLocalUseless = true,
                         localReason = "空白照片",
@@ -102,9 +101,6 @@ class PhotoClassifierImpl @Inject constructor(
                     photo
                 }
                 withCategory.copy(dHash = dHash)
-            } finally {
-                bitmap.recycle()
-            }
         } catch (_: Throwable) {
             photo
         }

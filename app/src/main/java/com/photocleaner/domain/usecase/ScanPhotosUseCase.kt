@@ -124,7 +124,7 @@ class ScanPhotosUseCase @Inject constructor(
     }
 
     private companion object {
-        const val CLASSIFY_PARALLELISM = 4
+        const val CLASSIFY_PARALLELISM = 1
         const val INSERT_BATCH = 20
     }
 }
