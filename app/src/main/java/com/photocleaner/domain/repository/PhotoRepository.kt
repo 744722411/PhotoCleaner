@@ -17,6 +17,7 @@ interface PhotoRepository {
     fun getTotalCount(): Flow<Int>
     fun getUselessCount(): Flow<Int>
     fun getUselessSize(): Flow<Long>
+    suspend fun getUselessCountSync(): Int
     suspend fun scanPhotos(): List<Photo>
     suspend fun scanPhotos(selectedDirectories: Set<String>): List<Photo>
     suspend fun discoverDirectories(): List<DirectoryInfo>

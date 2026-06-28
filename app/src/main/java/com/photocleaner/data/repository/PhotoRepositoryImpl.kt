@@ -39,7 +39,7 @@ class PhotoRepositoryImpl @Inject constructor(
     override fun getTotalCount(): Flow<Int> = photoDao.getTotalCount()
     override fun getUselessCount(): Flow<Int> = photoDao.getUselessCount()
     override fun getUselessSize(): Flow<Long> = photoDao.getUselessSize()
-
+    override suspend fun getUselessCountSync(): Int = photoDao.getUselessCountSync()
     override suspend fun scanPhotos(): List<Photo> = scanPhotos(emptySet())
 
     override suspend fun scanPhotos(selectedDirectories: Set<String>): List<Photo> = withContext(Dispatchers.IO) {

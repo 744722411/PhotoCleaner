@@ -245,8 +245,7 @@ class ScanViewModel @Inject constructor(
                     return@launch
                 }
 
-                val allPhotos = photoRepository.getAllPhotos().first()
-                val uselessCount = allPhotos.count { it.classification == Classification.USELESS && !it.isInTrash }
+                val uselessCount = photoRepository.getUselessCountSync()
 
                 scanStateHolder.updateState {
                     it.copy(
@@ -255,7 +254,7 @@ class ScanViewModel @Inject constructor(
                         isProcessingPaused = false,
                         scanComplete = true,
                         processingComplete = true,
-                        photos = allPhotos,
+                        photos = emptyList(),
                         uselessFound = uselessCount,
                         processedCount = scannedPhotos.size,
                         totalToProcess = scannedPhotos.size

@@ -21,6 +21,9 @@ interface PhotoDao {
     @Query("SELECT COUNT(*) FROM photos WHERE classification = 'USELESS' AND isInTrash = 0")
     fun getUselessCount(): Flow<Int>
 
+    @Query("SELECT COUNT(*) FROM photos WHERE classification = 'USELESS' AND isInTrash = 0")
+    suspend fun getUselessCountSync(): Int
+
     @Query("SELECT COALESCE(SUM(size), 0) FROM photos WHERE classification = 'USELESS' AND isInTrash = 0")
     fun getUselessSize(): Flow<Long>
 
