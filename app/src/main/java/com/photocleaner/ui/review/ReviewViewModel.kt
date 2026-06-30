@@ -40,7 +40,7 @@ data class ReviewUiState(
     val photos: List<Photo> = emptyList(),
     val similarGroups: List<List<Photo>> = emptyList(),
     val selectedPhotos: Set<Long> = emptySet(),
-    val filter: FilterType = FilterType.ALL,
+    val filter: FilterType = FilterType.USELESS,
     val isBatchMode: Boolean = false,
     val isLoading: Boolean = false,
     val deletedCount: Int = 0,
@@ -60,7 +60,7 @@ class ReviewViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(ReviewUiState())
     val uiState: StateFlow<ReviewUiState> = _uiState.asStateFlow()
 
-    private val _filter = MutableStateFlow(FilterType.ALL)
+    private val _filter = MutableStateFlow(FilterType.USELESS)
     private val _pendingDeleteIds = MutableStateFlow<Set<Long>>(emptySet())
     private val _event = MutableSharedFlow<ReviewEvent>()
     val event = _event

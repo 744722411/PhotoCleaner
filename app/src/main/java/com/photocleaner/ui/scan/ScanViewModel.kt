@@ -31,7 +31,7 @@ class ScanViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val localState = MutableStateFlow(
-        ScanUiState(selectedDirectories = emptySet(), showDirectoryPicker = false)
+        ScanUiState(selectedDirectories = emptySet(), showDirectoryPicker = false, batchSize = 2000)
     )
     private var hasDirectorySelectionDraft = false
 

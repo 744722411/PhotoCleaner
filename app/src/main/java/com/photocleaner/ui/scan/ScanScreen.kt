@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -230,7 +231,7 @@ fun ScanLogPanel(logs: List<ScanLogEntry>) {
             }
             Surface(color = Color(0xFF0D1117).copy(alpha = 0.92f), shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth().heightIn(max = 320.dp)) {
                 LazyColumn(state = listState, modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    items(logs, key = { entry -> entry.timestamp }) { entry -> ScanLogItem(entry = entry) }
+                    itemsIndexed(logs, key = { index, entry -> "${entry.timestamp}_$index" }) { _, entry -> ScanLogItem(entry = entry) }
                 }
             }
         }

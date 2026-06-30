@@ -76,7 +76,7 @@ class ScanPhotosUseCase @Inject constructor(
             }
             coroutineContext.ensureActive()
 
-            chunk.forEach { onLog(ScanLog(it.displayName, ScanLogStatus.PROCESSING, "正在本地检测...")) }
+            // Skip sending the raw "PROCESSING" log for each photo to avoid log redundancy.
 
             val chunkResults = coroutineScope {
                 chunk.map { photo ->
@@ -102,15 +102,14 @@ class ScanPhotosUseCase @Inject constructor(
                 }
                 val done = completed.incrementAndGet()
                 onProgress(done, total)
-                if (result.isLocalUseless) {
-                    onLog(ScanLog(
-                        result.displayName,
-                        ScanLogStatus.LOCAL_HIT,
-                        "发现问题: ${result.localReason} → ${result.classification.displayName} (${(result.confidence * 100).toInt()}%)"
-                    ))
-                } else {
-                    onLog(ScanLog(result.displayName, ScanLogStatus.SUCCESS, "本地检测通过"))
-                }
+            // 过滤：只有被判定为无用或待定（即isLocalUseless == true）的照片才打出日志
+            if (result.isLocalUseless) {
+                onLog(ScanLog(
+                    result.displayName,
+                    ScanLogStatus.LOCAL_HIT,
+                    "发现问题: ${result.localReason} → ${result.classification.displayName} (${(result.confidence * 100).toInt()}%)"
+                ))
+            }
             }
         }
 

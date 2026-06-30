@@ -1,5 +1,6 @@
 package com.photocleaner.data.repository
 
+import android.content.ContentResolver
 import android.content.ContentUris
 import android.content.Context
 import android.database.Cursor
@@ -304,15 +305,15 @@ class PhotoRepositoryImpl @Inject constructor(
             Bundle().apply {
                 putBoolean(MediaStore.QUERY_ARG_LATEST_SELECTION_ONLY, true)
                 putString(
-                    MediaStore.QUERY_ARG_SQL_SELECTION,
+                    ContentResolver.QUERY_ARG_SQL_SELECTION,
                     "${MediaStore.Files.FileColumns.MEDIA_TYPE} = ?"
                 )
                 putStringArray(
-                    MediaStore.QUERY_ARG_SQL_SELECTION_ARGS,
+                    ContentResolver.QUERY_ARG_SQL_SELECTION_ARGS,
                     arrayOf(MediaStore.Files.FileColumns.MEDIA_TYPE_IMAGE.toString())
                 )
                 if (sortOrder != null) {
-                    putString(MediaStore.QUERY_ARG_SQL_SORT_ORDER, sortOrder)
+                    putString(ContentResolver.QUERY_ARG_SQL_SORT_ORDER, sortOrder)
                 }
             },
             null

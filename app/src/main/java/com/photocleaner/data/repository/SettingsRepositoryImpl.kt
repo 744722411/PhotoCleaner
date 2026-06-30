@@ -32,7 +32,7 @@ class SettingsRepositoryImpl @Inject constructor(
     }
 
     override val batchSize: Flow<Int> = context.dataStore.data.map { preferences ->
-        preferences[BATCH_SIZE]?.toIntOrNull() ?: 100
+        preferences[BATCH_SIZE]?.toIntOrNull() ?: 2000
     }
 
     override suspend fun setBatchSize(size: Int) {
@@ -40,7 +40,7 @@ class SettingsRepositoryImpl @Inject constructor(
     }
 
     override suspend fun getBatchSizeSync(): Int =
-        context.dataStore.data.first()[BATCH_SIZE]?.toIntOrNull() ?: 100
+        context.dataStore.data.first()[BATCH_SIZE]?.toIntOrNull() ?: 2000
 
     override suspend fun setSelectedDirectories(dirs: Set<String>) {
         context.dataStore.edit { preferences -> preferences[SELECTED_DIRS] = dirs.joinToString(",") }
