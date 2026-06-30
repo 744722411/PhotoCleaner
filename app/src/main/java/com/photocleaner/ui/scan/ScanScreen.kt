@@ -35,7 +35,6 @@ import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.TipsAndUpdates
 import androidx.compose.material3.Button
@@ -145,7 +144,7 @@ fun ScanScreen(
         item { ScanSummary(uiState = uiState) }
         item {
             when {
-                !uiState.isScanning && !uiState.scanComplete && !uiState.isProcessing && !uiState.processingComplete && !uiState.isPaused -> {
+                !uiState.isScanning && !uiState.scanComplete && !uiState.isPaused -> {
                     ScanReadyContent(
                         selectedDirectories = uiState.selectedDirectories,
                         discoveredDirectories = uiState.discoveredDirectories,
@@ -160,13 +159,10 @@ fun ScanScreen(
                         onStartScan = { startScanOrRequestPermission() }
                     )
                 }
-                (uiState.isScanning || uiState.isPaused) && !uiState.isProcessing -> {
+                uiState.isScanning || uiState.isPaused -> {
                     ScanProgressContent(uiState = uiState, onPauseScan = viewModel::pauseScan, onResumeScan = viewModel::resumeScan, onStopScan = viewModel::stopScan)
                 }
-                uiState.isProcessing || uiState.isProcessingPaused -> {
-                    ProcessingProgressContent(uiState = uiState, onPauseProcessing = viewModel::pauseScan, onResumeProcessing = viewModel::resumeScan, onStopProcessing = viewModel::stopScan)
-                }
-                uiState.processingComplete -> {
+                uiState.scanComplete -> {
                     ProcessingCompleteContent(uiState = uiState, onReset = viewModel::reset)
                 }
             }
@@ -201,9 +197,8 @@ private fun ScanHeader(uiState: ScanUiState) {
             Column {
                 Text(stringResource(R.string.scan_title), style = MaterialTheme.typography.headlineMedium, color = Color.White, fontWeight = FontWeight.Bold)
                 Text(text = when {
-                    uiState.isProcessing || uiState.isProcessingPaused -> stringResource(R.string.scan_subtitle_processing)
                     uiState.isScanning || uiState.isPaused -> stringResource(R.string.scan_subtitle_scanning)
-                    uiState.processingComplete -> stringResource(R.string.scan_subtitle_complete)
+                    uiState.scanComplete -> stringResource(R.string.scan_subtitle_complete)
                     else -> stringResource(R.string.scan_subtitle_ready)
                 }, style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.6f))
             }
@@ -248,7 +243,6 @@ fun ScanLogItem(entry: ScanLogEntry) {
         LogStatus.PROCESSING -> Icons.Default.HourglassTop to YellowAccent
         LogStatus.SUCCESS -> Icons.Default.CheckCircle to GreenAccent
         LogStatus.LOCAL_HIT -> Icons.Default.TipsAndUpdates to YellowAccent
-        LogStatus.SKIP -> Icons.Default.SkipNext to Color.Gray
         LogStatus.ERROR -> Icons.Default.Error to RedAccent
         LogStatus.INFO -> Icons.Default.Info to BlueAccent
     }
@@ -405,58 +399,6 @@ fun ScanProgressContent(
                 }
                 OutlinedButton(
                     onClick = onStopScan,
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = RedAccent)
-                ) {
-                    Icon(Icons.Default.Stop, contentDescription = null)
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("停止")
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun ProcessingProgressContent(
-    uiState: ScanUiState,
-    onPauseProcessing: () -> Unit,
-    onResumeProcessing: () -> Unit,
-    onStopProcessing: () -> Unit
-) {
-    GlassCard(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            CircularProgressIndicator(modifier = Modifier.size(60.dp), color = GreenAccent, strokeWidth = 5.dp, trackColor = GreenAccent.copy(alpha = 0.2f))
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(text = if (uiState.isProcessingPaused) "本地检测已暂停" else "本地检测中...", style = MaterialTheme.typography.titleLarge, color = Color.White)
-            Spacer(modifier = Modifier.height(12.dp))
-            if (uiState.totalToProcess > 0) {
-                val progress = uiState.processedCount.toFloat() / uiState.totalToProcess
-                GradientProgressBar(progress = if (progress.isNaN() || progress.isInfinite()) 0f else progress, modifier = Modifier.fillMaxWidth(), gradient = Brush.horizontalGradient(listOf(GreenAccent, Color(0xFF2E7D32))))
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text(text = "已检测", style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.6f))
-                    Text(text = "${uiState.processedCount} / ${uiState.totalToProcess}", style = MaterialTheme.typography.titleMedium, color = GreenAccent, fontWeight = FontWeight.Bold)
-                }
-            }
-            Spacer(modifier = Modifier.height(16.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                OutlinedButton(
-                    onClick = if (uiState.isProcessingPaused) onResumeProcessing else onPauseProcessing,
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = YellowAccent)
-                ) {
-                    Icon(if (uiState.isProcessingPaused) Icons.Default.PlayArrow else Icons.Default.Pause, contentDescription = null)
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(if (uiState.isProcessingPaused) "继续" else "暂停")
-                }
-                OutlinedButton(
-                    onClick = onStopProcessing,
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = RedAccent)

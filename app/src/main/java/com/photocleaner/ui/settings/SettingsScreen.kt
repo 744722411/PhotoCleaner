@@ -23,7 +23,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -33,8 +32,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.photocleaner.R
 import com.photocleaner.ui.components.GlassCard
 import com.photocleaner.ui.components.ModernSectionHeader
@@ -43,10 +40,7 @@ import com.photocleaner.ui.theme.GreenAccent
 import com.photocleaner.ui.theme.YellowAccent
 
 @Composable
-fun SettingsScreen(
-    viewModel: SettingsViewModel = hiltViewModel()
-) {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+fun SettingsScreen() {
     val primaryColor = MaterialTheme.colorScheme.primary
     val secondaryColor = MaterialTheme.colorScheme.secondary
     val backgroundColor = MaterialTheme.colorScheme.background
@@ -95,8 +89,8 @@ fun SettingsScreen(
                     ) {
                         ModernSectionHeader(title = stringResource(R.string.settings_privacy), icon = Icons.Default.Security)
                         StatusPill(
-                            text = stringResource(if (uiState.networkDisabled) R.string.settings_offline else R.string.settings_online),
-                            color = if (uiState.networkDisabled) GreenAccent else YellowAccent
+                            text = stringResource(R.string.settings_offline),
+                            color = GreenAccent
                         )
                     }
 

@@ -32,8 +32,7 @@ object ScreenshotDetector {
         uri: Uri,
         displayName: String,
         width: Int,
-        height: Int,
-        mimeType: String
+        height: Int
     ): Boolean {
         // Check filename patterns
         val nameMatch = SCREENSHOT_PATTERNS.any { pattern ->

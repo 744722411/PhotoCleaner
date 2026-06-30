@@ -35,7 +35,6 @@
 
     <!-- Scan screen -->
     <string name="scan_title">照片扫描</string>
-    <string name="scan_subtitle_processing">正在完成本地检测</string>
     <string name="scan_subtitle_scanning">正在读取和检测本地照片</string>
     <string name="scan_subtitle_complete">本轮处理已完成</string>
     <string name="scan_subtitle_ready">选择目录并开始新一轮扫描</string>

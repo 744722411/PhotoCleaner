@@ -1,5 +1,6 @@
 package com.photocleaner.ui.navigation
 
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BarChart
@@ -59,6 +60,7 @@ fun NavGraph(
     val screens = listOf(Screen.Home, Screen.Scan, Screen.Review, Screen.Stats, Screen.Settings)
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         bottomBar = {
             NavigationBar(

@@ -2,9 +2,6 @@
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.photocleaner.domain.model.Classification
-import com.photocleaner.domain.model.DirectoryInfo
-import com.photocleaner.domain.model.Photo
 import com.photocleaner.domain.repository.PhotoRepository
 import com.photocleaner.domain.repository.SettingsRepository
 import com.photocleaner.domain.usecase.ScanLogStatus
@@ -21,7 +18,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -156,7 +152,7 @@ class ScanViewModel @Inject constructor(
 
     fun startScan() {
         val currentState = scanStateHolder.uiState.value
-        if (currentState.isScanning || currentState.isProcessing) return
+        if (currentState.isScanning) return
 
         scanJob?.cancel()
         scanJob = viewModelScope.launch {
@@ -167,7 +163,6 @@ class ScanViewModel @Inject constructor(
                     scanStateHolder.updateState {
                         it.copy(
                             isScanning = false,
-                            isProcessing = false,
                             error = "请先选择至少一个扫描目录"
                         )
                     }
@@ -181,17 +176,13 @@ class ScanViewModel @Inject constructor(
                     it.copy(
                         isScanning = true,
                         isPaused = false,
-                        isProcessing = false,
-                        isProcessingPaused = false,
                         error = null,
                         scanComplete = false,
-                        processingComplete = false,
                         scanLogs = emptyList(),
                         scannedCount = 0,
                         totalToScan = 0,
                         processedCount = 0,
                         totalToProcess = 0,
-                        photos = emptyList(),
                         uselessFound = 0
                     )
                 }
@@ -235,7 +226,6 @@ class ScanViewModel @Inject constructor(
                     scanStateHolder.updateState {
                         it.copy(
                             isScanning = false,
-                            isProcessing = false,
                             error = e.message ?: "扫描失败"
                         )
                     }
@@ -250,11 +240,7 @@ class ScanViewModel @Inject constructor(
                 scanStateHolder.updateState {
                     it.copy(
                         isScanning = false,
-                        isProcessing = false,
-                        isProcessingPaused = false,
                         scanComplete = true,
-                        processingComplete = true,
-                        photos = emptyList(),
                         uselessFound = uselessCount,
                         processedCount = scannedPhotos.size,
                         totalToProcess = scannedPhotos.size
@@ -265,7 +251,6 @@ class ScanViewModel @Inject constructor(
                     scanStateHolder.updateState {
                         it.copy(
                             isScanning = false,
-                            isProcessing = false,
                             error = e.message ?: "扫描失败"
                         )
                     }
@@ -292,9 +277,7 @@ class ScanViewModel @Inject constructor(
         scanStateHolder.updateState {
             it.copy(
                 isScanning = false,
-                isPaused = false,
-                isProcessing = false,
-                isProcessingPaused = false
+                isPaused = false
             )
         }
         scanStateHolder.addLog(ScanLogEntry(message = "已停止", status = LogStatus.INFO))

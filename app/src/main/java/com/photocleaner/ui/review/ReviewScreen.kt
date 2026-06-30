@@ -113,6 +113,7 @@ fun ReviewScreen(
     }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         floatingActionButton = {
             AnimatedVisibility(
                 visible = uiState.isBatchMode && uiState.selectedPhotos.isNotEmpty(),
@@ -157,7 +158,7 @@ fun ReviewScreen(
 
                 ReviewSummary(
                     uiState = uiState,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
                 )
 
                 Box(modifier = Modifier.fillMaxSize()) {
@@ -206,10 +207,10 @@ fun ReviewScreen(
 
                         isGridView -> {
                             LazyVerticalGrid(
-                                columns = GridCells.Fixed(3),
-                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
-                                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                verticalArrangement = Arrangement.spacedBy(6.dp)
+                                columns = GridCells.Fixed(2),
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 items(uiState.photos, key = { it.id }) { photo ->
                                     PhotoCard(
@@ -304,7 +305,7 @@ private fun ReviewHeader(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(horizontal = 12.dp, vertical = 6.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -314,18 +315,18 @@ private fun ReviewHeader(
         ) {
             Box(
                 modifier = Modifier
-                    .size(40.dp)
+                    .size(34.dp)
                     .clip(CircleShape)
                     .background(BlueAccent.copy(alpha = 0.18f)),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Default.Preview, contentDescription = null, tint = BlueAccent, modifier = Modifier.size(20.dp))
+                Icon(Icons.Default.Preview, contentDescription = null, tint = BlueAccent, modifier = Modifier.size(18.dp))
             }
             Column {
-                Text(stringResource(R.string.review_title), style = MaterialTheme.typography.titleLarge, color = Color.White, fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.review_title), style = MaterialTheme.typography.titleMedium, color = Color.White, fontWeight = FontWeight.Bold)
                 Text(
                     stringResource(if (uiState.isBatchMode) R.string.review_subtitle_batch else R.string.review_subtitle_normal),
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.labelSmall,
                     color = Color.White.copy(alpha = 0.6f)
                 )
             }
@@ -404,44 +405,35 @@ private fun ReviewSummary(
     uiState: ReviewUiState,
     modifier: Modifier = Modifier
 ) {
-    GlassCard(modifier = modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column {
-                Text(
-                    text = stringResource(if (uiState.filter == FilterType.SIMILAR) R.string.review_summary_similar else R.string.review_summary_result),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = Color.White.copy(alpha = 0.55f)
-                )
-                Text(
-                    text = if (uiState.filter == FilterType.SIMILAR) {
-                        stringResource(R.string.review_group_count, uiState.similarGroups.size)
-                    } else {
-                        stringResource(R.string.review_photo_count, uiState.photos.size)
-                    },
-                    style = MaterialTheme.typography.titleMedium,
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-            if (uiState.isBatchMode) {
-                    Text(
-                        text = stringResource(R.string.review_selected, uiState.selectedPhotos.size),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = BlueAccent,
-                        fontWeight = FontWeight.Bold
-                    )
-                } else if (uiState.lastDeletedPhotos.isNotEmpty()) {
-                    Text(
-                        text = stringResource(R.string.review_pending, uiState.lastDeletedPhotos.size),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = YellowAccent,
-                    fontWeight = FontWeight.Bold
-                )
-            }
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = if (uiState.filter == FilterType.SIMILAR) {
+                stringResource(R.string.review_group_count, uiState.similarGroups.size)
+            } else {
+                stringResource(R.string.review_photo_count, uiState.photos.size)
+            },
+            style = MaterialTheme.typography.labelLarge,
+            color = Color.White.copy(alpha = 0.72f),
+            fontWeight = FontWeight.Bold
+        )
+        if (uiState.isBatchMode) {
+            Text(
+                text = stringResource(R.string.review_selected, uiState.selectedPhotos.size),
+                style = MaterialTheme.typography.labelLarge,
+                color = BlueAccent,
+                fontWeight = FontWeight.Bold
+            )
+        } else if (uiState.lastDeletedPhotos.isNotEmpty()) {
+            Text(
+                text = stringResource(R.string.review_pending, uiState.lastDeletedPhotos.size),
+                style = MaterialTheme.typography.labelLarge,
+                color = YellowAccent,
+                fontWeight = FontWeight.Bold
+            )
         }
     }
 }

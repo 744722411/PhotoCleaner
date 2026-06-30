@@ -76,7 +76,9 @@ class ReviewViewModel @Inject constructor(
                     val filtered = when (filter) {
                         FilterType.ALL -> photos
                         FilterType.SIMILAR -> photos
-                        FilterType.LARGE -> photos.sortedByDescending { it.size }
+                        FilterType.LARGE -> photos
+                            .filter { it.size >= LARGE_MEDIA_THRESHOLD_BYTES }
+                            .sortedByDescending { it.size }
                         FilterType.USELESS -> photos.filter { it.classification == Classification.USELESS }
                         FilterType.UNCERTAIN -> photos.filter { it.classification == Classification.UNCERTAIN }
                         FilterType.KEEP -> photos.filter { it.classification == Classification.KEEP }
@@ -137,8 +139,8 @@ class ReviewViewModel @Inject constructor(
     fun keepBestInGroup(group: List<Photo>) {
         if (group.size <= 1) return
         val bestPhoto = group.minWithOrNull { p1, p2 ->
-            val p1Blur = p1.localReason.contains("妯＄硦")
-            val p2Blur = p2.localReason.contains("妯＄硦")
+            val p1Blur = p1.localReason.contains("模糊")
+            val p2Blur = p2.localReason.contains("模糊")
             if (p1Blur != p2Blur) return@minWithOrNull if (p1Blur) 1 else -1
             val p1Area = p1.width * p1.height
             val p2Area = p2.width * p2.height
@@ -252,5 +254,9 @@ class ReviewViewModel @Inject constructor(
                 _uiState.update { it.copy(error = e.message ?: "保留操作失败") }
             }
         }
+    }
+
+    private companion object {
+        const val LARGE_MEDIA_THRESHOLD_BYTES = 20L * 1024L * 1024L
     }
 }

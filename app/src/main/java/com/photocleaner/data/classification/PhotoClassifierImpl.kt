@@ -28,7 +28,7 @@ class PhotoClassifierImpl @Inject constructor(
 
             // Step 1: fast screenshot detection (no bitmap decode needed)
             if (ScreenshotDetector.isScreenshot(
-                    context, uri, photo.displayName, photo.width, photo.height, photo.mimeType
+                    context, uri, photo.displayName, photo.width, photo.height
                 )
             ) {
                 return photo.copy(

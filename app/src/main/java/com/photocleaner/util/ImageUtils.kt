@@ -4,7 +4,6 @@ import android.graphics.Bitmap
 import android.graphics.Color
 
 object ImageUtils {
-    private const val BLANK_THRESHOLD = 15.0
     private const val SAMPLE_STEP = 5
 
     fun isBlank(bitmap: Bitmap): Boolean {
