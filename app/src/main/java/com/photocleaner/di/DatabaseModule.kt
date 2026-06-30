@@ -2,10 +2,9 @@ package com.photocleaner.di
 
 import android.content.Context
 import androidx.room.Room
-import androidx.room.migration.Migration
-import androidx.sqlite.db.SupportSQLiteDatabase
 import com.photocleaner.data.local.PhotoDao
 import com.photocleaner.data.local.PhotoDatabase
+import com.photocleaner.data.local.PhotoDatabaseMigrations
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -16,34 +15,11 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 object DatabaseModule {
-    private val MIGRATION_1_2 = object : Migration(1, 2) {
-        override fun migrate(db: SupportSQLiteDatabase) {
-            db.execSQL("ALTER TABLE photos ADD COLUMN isLocalUseless INTEGER NOT NULL DEFAULT 0")
-            db.execSQL("ALTER TABLE photos ADD COLUMN localReason TEXT NOT NULL DEFAULT ''")
-        }
-    }
-
-    private val MIGRATION_2_3 = object : Migration(2, 3) {
-        override fun migrate(db: SupportSQLiteDatabase) {
-            db.execSQL("ALTER TABLE photos ADD COLUMN isInTrash INTEGER NOT NULL DEFAULT 0")
-            db.execSQL("ALTER TABLE photos ADD COLUMN dHash INTEGER NOT NULL DEFAULT 0")
-            db.execSQL("CREATE INDEX IF NOT EXISTS `index_photos_classification` ON `photos` (`classification`)")
-            db.execSQL("CREATE INDEX IF NOT EXISTS `index_photos_isInTrash` ON `photos` (`isInTrash`)")
-        }
-    }
-
-    private val MIGRATION_3_4 = object : Migration(3, 4) {
-        override fun migrate(db: SupportSQLiteDatabase) {
-            db.execSQL("CREATE INDEX IF NOT EXISTS `index_photos_classification` ON `photos` (`classification`)")
-            db.execSQL("CREATE INDEX IF NOT EXISTS `index_photos_isInTrash` ON `photos` (`isInTrash`)")
-        }
-    }
-
     @Provides
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): PhotoDatabase =
         Room.databaseBuilder(context, PhotoDatabase::class.java, "photo_cleaner.db")
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+            .addMigrations(*PhotoDatabaseMigrations.ALL)
             .fallbackToDestructiveMigrationOnDowngrade()
             .build()
 

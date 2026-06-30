@@ -2,8 +2,10 @@ package com.photocleaner.data.repository
 
 import android.content.ContentUris
 import android.content.Context
+import android.database.Cursor
 import android.net.Uri
 import android.os.Build
+import android.os.Bundle
 import android.os.Environment
 import android.provider.MediaStore
 import com.photocleaner.data.local.PhotoDao
@@ -12,6 +14,8 @@ import com.photocleaner.domain.model.Classification
 import com.photocleaner.domain.model.DirectoryInfo
 import com.photocleaner.domain.model.Photo
 import com.photocleaner.domain.repository.PhotoRepository
+import com.photocleaner.util.MediaAccessLevel
+import com.photocleaner.util.PermissionHelper
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -59,10 +63,7 @@ class PhotoRepositoryImpl @Inject constructor(
         val useDirectoryFilter = selectedDirectories.isNotEmpty()
         val sortOrder = "${MediaStore.Images.Media.DATE_ADDED} DESC"
 
-        context.contentResolver.query(
-            MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-            projection, null, null, sortOrder
-        )?.use { cursor ->
+        queryImages(projection, sortOrder)?.use { cursor ->
             val idCol = cursor.getColumnIndex(MediaStore.Images.Media._ID)
             val nameCol = cursor.getColumnIndex(MediaStore.Images.Media.DISPLAY_NAME)
             val mimeCol = cursor.getColumnIndex(MediaStore.Images.Media.MIME_TYPE)
@@ -144,10 +145,7 @@ class PhotoRepositoryImpl @Inject constructor(
             MediaStore.Images.Media.HEIGHT
         ) + mediaPathProjection()
 
-        context.contentResolver.query(
-            MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-            projection, null, null, null
-        )?.use { cursor ->
+        queryImages(projection, null)?.use { cursor ->
             val relPathCol = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 cursor.getColumnIndex(MediaStore.Images.Media.RELATIVE_PATH)
             } else {
@@ -292,4 +290,40 @@ class PhotoRepositoryImpl @Inject constructor(
         } else {
             arrayOf(MediaStore.Images.Media.DATA)
         }
+
+    private fun queryImages(
+        projection: Array<String>,
+        sortOrder: String?
+    ): Cursor? = if (
+        PermissionHelper.getMediaAccessLevel(context) == MediaAccessLevel.PARTIAL &&
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM
+    ) {
+        context.contentResolver.query(
+            MediaStore.Files.getContentUri("external"),
+            projection,
+            Bundle().apply {
+                putBoolean(MediaStore.QUERY_ARG_LATEST_SELECTION_ONLY, true)
+                putString(
+                    MediaStore.QUERY_ARG_SQL_SELECTION,
+                    "${MediaStore.Files.FileColumns.MEDIA_TYPE} = ?"
+                )
+                putStringArray(
+                    MediaStore.QUERY_ARG_SQL_SELECTION_ARGS,
+                    arrayOf(MediaStore.Files.FileColumns.MEDIA_TYPE_IMAGE.toString())
+                )
+                if (sortOrder != null) {
+                    putString(MediaStore.QUERY_ARG_SQL_SORT_ORDER, sortOrder)
+                }
+            },
+            null
+        )
+    } else {
+        context.contentResolver.query(
+            MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+            projection,
+            null,
+            null,
+            sortOrder
+        )
+    }
 }

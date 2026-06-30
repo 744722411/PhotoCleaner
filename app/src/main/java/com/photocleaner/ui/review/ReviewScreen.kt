@@ -83,12 +83,6 @@ fun ReviewScreen(
         }
     }
 
-    DisposableEffect(viewModel) {
-        onDispose {
-            viewModel.commitPendingDeletes()
-        }
-    }
-
     LaunchedEffect(uiState.error) {
         uiState.error?.let {
             snackbarHostState.showSnackbar(it, withDismissAction = true)

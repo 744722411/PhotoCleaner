@@ -6,6 +6,12 @@ import android.content.pm.PackageManager
 import android.os.Build
 import androidx.core.content.ContextCompat
 
+enum class MediaAccessLevel {
+    NONE,
+    PARTIAL,
+    FULL
+}
+
 object PermissionHelper {
     fun getRequiredPermissions(): Array<String> {
         val permissions = mutableListOf<String>()
@@ -20,22 +26,30 @@ object PermissionHelper {
         return permissions.toTypedArray()
     }
 
-    fun hasStoragePermission(context: Context): Boolean {
+    fun getMediaAccessLevel(context: Context): MediaAccessLevel {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            ContextCompat.checkSelfPermission(
+            val hasFullAccess = ContextCompat.checkSelfPermission(
                 context, Manifest.permission.READ_MEDIA_IMAGES
-            ) == PackageManager.PERMISSION_GRANTED ||
-            ContextCompat.checkSelfPermission(
+            ) == PackageManager.PERMISSION_GRANTED
+            val hasPartialAccess = ContextCompat.checkSelfPermission(
                 context, Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED
             ) == PackageManager.PERMISSION_GRANTED
+            when {
+                hasFullAccess -> MediaAccessLevel.FULL
+                hasPartialAccess -> MediaAccessLevel.PARTIAL
+                else -> MediaAccessLevel.NONE
+            }
         } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            ContextCompat.checkSelfPermission(
+            if (ContextCompat.checkSelfPermission(
                 context, Manifest.permission.READ_MEDIA_IMAGES
-            ) == PackageManager.PERMISSION_GRANTED
+            ) == PackageManager.PERMISSION_GRANTED) MediaAccessLevel.FULL else MediaAccessLevel.NONE
         } else {
-            ContextCompat.checkSelfPermission(
+            if (ContextCompat.checkSelfPermission(
                 context, Manifest.permission.READ_EXTERNAL_STORAGE
-            ) == PackageManager.PERMISSION_GRANTED
+            ) == PackageManager.PERMISSION_GRANTED) MediaAccessLevel.FULL else MediaAccessLevel.NONE
         }
     }
+
+    fun hasStoragePermission(context: Context): Boolean =
+        getMediaAccessLevel(context) != MediaAccessLevel.NONE
 }

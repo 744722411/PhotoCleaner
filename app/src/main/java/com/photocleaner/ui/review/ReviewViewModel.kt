@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -60,6 +61,7 @@ class ReviewViewModel @Inject constructor(
     val uiState: StateFlow<ReviewUiState> = _uiState.asStateFlow()
 
     private val _filter = MutableStateFlow(FilterType.ALL)
+    private val _pendingDeleteIds = MutableStateFlow<Set<Long>>(emptySet())
     private val _event = MutableSharedFlow<ReviewEvent>()
     val event = _event
 
@@ -71,21 +73,21 @@ class ReviewViewModel @Inject constructor(
     private fun loadPhotos() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
-            _filter.collectLatest { filter ->
-                repository.getAllPhotos().collectLatest { photos ->
-                    val filtered = when (filter) {
-                        FilterType.ALL -> photos
-                        FilterType.SIMILAR -> photos
-                        FilterType.LARGE -> photos
-                            .filter { it.size >= LARGE_MEDIA_THRESHOLD_BYTES }
-                            .sortedByDescending { it.size }
-                        FilterType.USELESS -> photos.filter { it.classification == Classification.USELESS }
-                        FilterType.UNCERTAIN -> photos.filter { it.classification == Classification.UNCERTAIN }
-                        FilterType.KEEP -> photos.filter { it.classification == Classification.KEEP }
-                    }
-                    val similarGroups = if (filter == FilterType.SIMILAR) groupSimilarPhotos(photos) else emptyList()
-                    _uiState.update { state -> state.copy(photos = filtered, similarGroups = similarGroups, isLoading = false) }
+            combine(_filter, repository.getAllPhotos(), _pendingDeleteIds) { filter, photos, pendingIds ->
+                Triple(filter, photos.filterNot { it.id in pendingIds }, pendingIds)
+            }.collectLatest { (filter, photos, _) ->
+                val filtered = when (filter) {
+                    FilterType.ALL -> photos
+                    FilterType.SIMILAR -> photos
+                    FilterType.LARGE -> photos
+                        .filter { it.size >= LARGE_MEDIA_THRESHOLD_BYTES }
+                        .sortedByDescending { it.size }
+                    FilterType.USELESS -> photos.filter { it.classification == Classification.USELESS }
+                    FilterType.UNCERTAIN -> photos.filter { it.classification == Classification.UNCERTAIN }
+                    FilterType.KEEP -> photos.filter { it.classification == Classification.KEEP }
                 }
+                val similarGroups = if (filter == FilterType.SIMILAR) groupSimilarPhotos(photos) else emptyList()
+                _uiState.update { state -> state.copy(photos = filtered, similarGroups = similarGroups, isLoading = false) }
             }
         }
     }
@@ -157,17 +159,14 @@ class ReviewViewModel @Inject constructor(
 
         val existingIds = pendingDeletePhotosList.mapTo(mutableSetOf()) { it.id }
         photos.forEach { photo -> if (existingIds.add(photo.id)) pendingDeletePhotosList.add(photo) }
+        _pendingDeleteIds.value = existingIds
 
-        viewModelScope.launch {
-            try {
-                deletePhotosUseCase(photos)
-                _uiState.update { state -> state.copy(deletedCount = pendingDeletePhotosList.size, showUndo = true, lastDeletedPhotos = pendingDeletePhotosList.toList()) }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                pendingDeletePhotosList.removeAll { it.id in photos.map { photo -> photo.id }.toSet() }
-                _uiState.update { it.copy(error = e.message ?: "删除失败") }
-            }
+        _uiState.update { state ->
+            state.copy(
+                deletedCount = pendingDeletePhotosList.size,
+                showUndo = true,
+                lastDeletedPhotos = pendingDeletePhotosList.toList()
+            )
         }
 
         deleteJob = viewModelScope.launch {
@@ -178,23 +177,14 @@ class ReviewViewModel @Inject constructor(
 
     fun undoDelete() {
         deleteJob?.cancel()
-        val photos = _uiState.value.lastDeletedPhotos
-        if (photos.isEmpty()) return
-        viewModelScope.launch {
-            try {
-                deletePhotosUseCase.restore(photos)
-                clearPendingDeletes(photos.size)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                _uiState.update { it.copy(error = e.message ?: "撤销失败") }
-            }
-        }
+        if (_uiState.value.lastDeletedPhotos.isEmpty()) return
+        clearPendingDeletes()
     }
 
     fun commitPendingDeletes() {
         val photos = pendingDeletePhotosList.toList()
         if (photos.isEmpty()) return
+        deleteJob?.cancel()
         viewModelScope.launch {
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
                 val pendingIntent = trashService.createTrashPendingIntent(photos)
@@ -202,40 +192,44 @@ class ReviewViewModel @Inject constructor(
                     _uiState.update { it.copy(showUndo = false) }
                     _event.emit(ReviewEvent.LaunchTrashIntent(pendingIntent))
                 } else {
-                    try {
-                        deletePhotosUseCase.restore(photos)
-                    } catch (e: CancellationException) {
-                        throw e
-                    } catch (e: Exception) {
-                        _uiState.update { it.copy(error = e.message ?: "恢复失败") }
-                    }
+                    _uiState.update { it.copy(error = "无法创建系统回收站请求") }
                     clearPendingDeletes(photos.size)
                 }
             } else {
-                clearPendingDeletes(photos.size)
+                try {
+                    deletePhotosUseCase(photos)
+                    clearPendingDeletes(photos.size)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    _uiState.update { it.copy(error = e.message ?: "删除失败") }
+                }
             }
         }
     }
 
-    fun onTrashConfirmed() { clearPendingDeletes() }
-
-    fun onTrashCanceled() {
+    fun onTrashConfirmed() {
         val photos = pendingDeletePhotosList.toList()
-        pendingDeletePhotosList.clear()
+        if (photos.isEmpty()) return
         viewModelScope.launch {
             try {
-                deletePhotosUseCase.restore(photos)
+                deletePhotosUseCase(photos)
+                clearPendingDeletes(photos.size)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                _uiState.update { it.copy(error = e.message ?: "恢复失败") }
+                _uiState.update { it.copy(error = e.message ?: "删除状态更新失败") }
             }
-            _uiState.update { state -> state.copy(showUndo = false, lastDeletedPhotos = emptyList(), deletedCount = maxOf(0, state.deletedCount - photos.size)) }
         }
+    }
+
+    fun onTrashCanceled() {
+        clearPendingDeletes()
     }
 
     private fun clearPendingDeletes(deletedCountDelta: Int = pendingDeletePhotosList.size) {
         pendingDeletePhotosList.clear()
+        _pendingDeleteIds.value = emptySet()
         _uiState.update { state -> state.copy(showUndo = false, lastDeletedPhotos = emptyList(), deletedCount = maxOf(0, state.deletedCount - deletedCountDelta)) }
     }
 
