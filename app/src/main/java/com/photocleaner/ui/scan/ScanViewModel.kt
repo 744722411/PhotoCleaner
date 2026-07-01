@@ -39,8 +39,9 @@ class ScanViewModel @Inject constructor(
         scanStateHolder.uiState,
         localState,
         settingsRepository.selectedDirectories,
-        settingsRepository.batchSize
-    ) { serviceState, localUiState, persistedSelectedDirs, batchSize ->
+        settingsRepository.batchSize,
+        settingsRepository.rescanExistingPhotos
+    ) { serviceState, localUiState, persistedSelectedDirs, batchSize, rescanExistingPhotos ->
         serviceState.copy(
             selectedDirectories = if (
                 hasDirectorySelectionDraft ||
@@ -54,7 +55,8 @@ class ScanViewModel @Inject constructor(
             showDirectoryPicker = localUiState.showDirectoryPicker,
             discoveredDirectories = localUiState.discoveredDirectories,
             isDiscoveringDirs = localUiState.isDiscoveringDirs,
-            batchSize = batchSize
+            batchSize = batchSize,
+            rescanExistingPhotos = rescanExistingPhotos
         )
     }.stateIn(
         scope = viewModelScope,
@@ -92,6 +94,8 @@ class ScanViewModel @Inject constructor(
                         selectedDirectories = selected
                     )
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 localState.update { it.copy(isDiscoveringDirs = false) }
                 scanStateHolder.updateState {
@@ -157,8 +161,7 @@ class ScanViewModel @Inject constructor(
         scanJob?.cancel()
         scanJob = viewModelScope.launch {
             try {
-                persistSelectedDirectories()
-                val selectedDirectories = settingsRepository.getSelectedDirectoriesSync()
+                val selectedDirectories = getEffectiveSelectedDirectories()
                 if (selectedDirectories.isEmpty()) {
                     scanStateHolder.updateState {
                         it.copy(
@@ -171,6 +174,7 @@ class ScanViewModel @Inject constructor(
                     )
                     return@launch
                 }
+                settingsRepository.setSelectedDirectories(selectedDirectories)
 
                 scanStateHolder.updateState {
                     it.copy(
@@ -183,28 +187,58 @@ class ScanViewModel @Inject constructor(
                         totalToScan = 0,
                         processedCount = 0,
                         totalToProcess = 0,
-                        uselessFound = 0
+                        uselessFound = 0,
+                        selectedDirectories = selectedDirectories
                     )
                 }
                 scanStateHolder.addLog(ScanLogEntry(message = "开始扫描照片...", status = LogStatus.INFO))
+                scanStateHolder.addLog(
+                    ScanLogEntry(
+                        message = "扫描目录: ${selectedDirectories.size} 个",
+                        status = LogStatus.INFO
+                    )
+                )
 
                 val batchSize = settingsRepository.getBatchSizeSync()
+                val rescanExistingPhotos = settingsRepository.getRescanExistingPhotosSync()
+                val targetLabel = if (rescanExistingPhotos) "照片" else "新照片"
                 if (batchSize > 0) {
                     scanStateHolder.addLog(
                         ScanLogEntry(
-                            message = "每次处理数量: $batchSize",
+                            message = "最多处理$targetLabel: $batchSize",
+                            status = LogStatus.INFO
+                        )
+                    )
+                } else {
+                    scanStateHolder.addLog(
+                        ScanLogEntry(
+                            message = "处理数量: 全部$targetLabel",
                             status = LogStatus.INFO
                         )
                     )
                 }
+                scanStateHolder.addLog(
+                    ScanLogEntry(
+                        message = if (rescanExistingPhotos) "模式: 重新检测已入库照片" else "模式: 只处理新照片",
+                        status = LogStatus.INFO
+                    )
+                )
 
                 val scannedPhotos = try {
                     scanPhotosUseCase(
                         selectedDirectories = selectedDirectories,
                         batchSize = batchSize,
+                        rescanExistingPhotos = rescanExistingPhotos,
                         isPaused = { scanStateHolder.uiState.value.isPaused },
                         onProgress = { scanned, total ->
-                            scanStateHolder.updateState { it.copy(scannedCount = scanned, totalToScan = total) }
+                            scanStateHolder.updateState {
+                                it.copy(
+                                    scannedCount = scanned,
+                                    totalToScan = total,
+                                    processedCount = scanned,
+                                    totalToProcess = total
+                                )
+                            }
                         },
                         onLog = { log ->
                             scanStateHolder.addLog(
@@ -222,6 +256,8 @@ class ScanViewModel @Inject constructor(
                             )
                         }
                     )
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (e: Exception) {
                     scanStateHolder.updateState {
                         it.copy(
@@ -277,16 +313,25 @@ class ScanViewModel @Inject constructor(
         scanStateHolder.updateState {
             it.copy(
                 isScanning = false,
-                isPaused = false
+                isPaused = false,
+                scanComplete = false
             )
         }
-        scanStateHolder.addLog(ScanLogEntry(message = "已停止", status = LogStatus.INFO))
+        scanStateHolder.addLog(ScanLogEntry(message = "已停止，已完成检测的照片会保留在审查页", status = LogStatus.INFO))
     }
 
     fun reset() {
         scanJob?.cancel()
         scanStateHolder.reset()
         hasDirectorySelectionDraft = false
-        localState.update { ScanUiState() }
+        viewModelScope.launch {
+            localState.update {
+                ScanUiState(
+                    selectedDirectories = settingsRepository.getSelectedDirectoriesSync(),
+                    batchSize = settingsRepository.getBatchSizeSync(),
+                    rescanExistingPhotos = settingsRepository.getRescanExistingPhotosSync()
+                )
+            }
+        }
     }
 }

@@ -7,12 +7,20 @@
     <string name="nav_scan">扫描</string>
     <string name="nav_review">审查</string>
     <string name="nav_stats">统计</string>
-    <string name="nav_settings">关于</string>
+    <string name="nav_settings">设置</string>
 
     <!-- Permissions -->
     <string name="permission_required">需要存储权限以扫描照片</string>
     <string name="permission_grant">授权</string>
     <string name="permission_missing_scan">未授予照片访问权限，无法开始扫描</string>
+    <string name="permission_full">完整访问</string>
+    <string name="permission_partial">部分访问</string>
+    <string name="permission_none">未授权</string>
+    <string name="permission_reauthorize">重新授权照片访问</string>
+    <string name="permission_full_desc">应用可以读取你授权范围内的全部照片目录。</string>
+    <string name="permission_partial_desc">当前只能访问系统选择器授权的部分照片，目录列表和扫描结果可能不完整。</string>
+    <string name="permission_none_desc">应用还不能读取照片，请先授予照片访问权限。</string>
+    <string name="permission_partial_scan_warning">当前是部分照片访问，目录发现和扫描结果只会覆盖系统已授权的照片。</string>
 
     <!-- Classification -->
     <string name="class_useless">建议清理</string>
@@ -51,6 +59,10 @@
     <string name="scan_select_all">全选</string>
     <string name="scan_deselect_all">全不选</string>
     <string name="scan_dirs_summary">已选 %1$d 个目录，共 %2$s 张</string>
+    <string name="scan_ready_summary_limited">已选 %1$d 个目录，约 %2$d 张照片；本次最多处理 %3$d 张%4$s</string>
+    <string name="scan_ready_summary_all">已选 %1$d 个目录，约 %2$d 张照片；本次处理全部%3$s</string>
+    <string name="scan_new_photos_suffix">新照片</string>
+    <string name="scan_all_photos_suffix">照片</string>
     <string name="scan_dir_count_format">%1$s 张</string>
     <string name="scan_batch_size">每次处理数量</string>
     <string name="scan_batch_all">全部</string>
@@ -86,8 +98,8 @@
     <string name="home_action_review_sub">确认保留项和待删除项</string>
     <string name="home_action_stats_title">查看统计</string>
     <string name="home_action_stats_sub">检查处理分布和空间收益</string>
-    <string name="home_action_settings_title">关于应用</string>
-    <string name="home_action_settings_sub">本地处理与隐私说明</string>
+    <string name="home_action_settings_title">应用设置</string>
+    <string name="home_action_settings_sub">调整扫描数量、权限和隐私状态</string>
     <string name="home_recent_photos">最近照片</string>
 
     <!-- Review screen -->
@@ -132,8 +144,13 @@
     <string name="stats_count_percent">%1$d 张(%2$d%%)</string>
 
     <!-- Settings screen -->
-    <string name="settings_title">关于本应用</string>
-    <string name="settings_subtitle">本地扫描与隐私状态</string>
+    <string name="settings_title">应用设置</string>
+    <string name="settings_subtitle">调整扫描方式、照片权限与隐私状态</string>
+    <string name="settings_scan_behavior">扫描方式</string>
+    <string name="settings_batch_desc">较小批量更适合先验证结果；选择“全部”会处理当前范围内所有符合条件的照片。</string>
+    <string name="settings_rescan_existing_title">重新检测已入库照片</string>
+    <string name="settings_rescan_existing_desc">关闭时只扫描新照片；开启后会刷新已记录照片的算法建议，适合算法或目录规则更新后使用。</string>
+    <string name="settings_permission">照片访问权限</string>
     <string name="settings_privacy">隐私保护</string>
     <string name="settings_offline">离线</string>
     <string name="settings_online">联网</string>

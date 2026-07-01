@@ -21,5 +21,6 @@ data class ScanUiState(
     val showDirectoryPicker: Boolean = false,
     val discoveredDirectories: List<DirectoryInfo> = emptyList(),
     val isDiscoveringDirs: Boolean = false,
-    val batchSize: Int = 100
+    val batchSize: Int = 2000,
+    val rescanExistingPhotos: Boolean = false
 )

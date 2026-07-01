@@ -299,7 +299,7 @@ private fun ReviewHeader(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 6.dp),
+            .padding(start = 12.dp, top = 8.dp, end = 8.dp, bottom = 4.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -309,18 +309,24 @@ private fun ReviewHeader(
         ) {
             Box(
                 modifier = Modifier
-                    .size(34.dp)
+                    .size(30.dp)
                     .clip(CircleShape)
                     .background(BlueAccent.copy(alpha = 0.18f)),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Default.Preview, contentDescription = null, tint = BlueAccent, modifier = Modifier.size(18.dp))
+                Icon(Icons.Default.Preview, contentDescription = null, tint = BlueAccent, modifier = Modifier.size(16.dp))
             }
             Column {
-                Text(stringResource(R.string.review_title), style = MaterialTheme.typography.titleMedium, color = Color.White, fontWeight = FontWeight.Bold)
+                Text(
+                    stringResource(R.string.review_title),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold
+                )
                 Text(
                     stringResource(if (uiState.isBatchMode) R.string.review_subtitle_batch else R.string.review_subtitle_normal),
                     style = MaterialTheme.typography.labelSmall,
+                    fontSize = 10.sp,
                     color = Color.White.copy(alpha = 0.6f)
                 )
             }

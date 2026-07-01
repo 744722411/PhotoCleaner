@@ -1,6 +1,5 @@
 ﻿package com.photocleaner.ui.scan
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -28,7 +27,6 @@ import androidx.compose.material.icons.filled.CheckBox
 import androidx.compose.material.icons.filled.CheckBoxOutlineBlank
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Error
-import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.HourglassTop
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Menu
@@ -59,14 +57,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -80,11 +76,13 @@ import com.photocleaner.service.ScanLogEntry
 import com.photocleaner.service.ScanUiState
 import com.photocleaner.ui.components.GlassCard
 import com.photocleaner.ui.components.GradientProgressBar
+import com.photocleaner.ui.settings.BatchSizeSelector
 import com.photocleaner.ui.theme.BlueAccent
 import com.photocleaner.ui.theme.GreenAccent
 import com.photocleaner.ui.theme.Purple80
 import com.photocleaner.ui.theme.RedAccent
 import com.photocleaner.ui.theme.YellowAccent
+import com.photocleaner.util.MediaAccessLevel
 import com.photocleaner.util.PermissionHelper
 import kotlinx.coroutines.launch
 
@@ -99,6 +97,7 @@ fun ScanScreen(
     val scope = rememberCoroutineScope()
     val permissionMissingMsg = stringResource(R.string.permission_missing_scan)
     val grantLabel = stringResource(R.string.permission_grant)
+    val mediaAccessLevel = PermissionHelper.getMediaAccessLevel(context)
 
     fun startScanOrRequestPermission() {
         if (PermissionHelper.hasStoragePermission(context)) {
@@ -142,6 +141,11 @@ fun ScanScreen(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item { ScanHeader(uiState = uiState) }
+        if (mediaAccessLevel == MediaAccessLevel.PARTIAL) {
+            item {
+                PermissionNotice(onRequestPermission = onRequestPermission)
+            }
+        }
         item { ScanSummary(uiState = uiState) }
         item {
             when {
@@ -151,6 +155,7 @@ fun ScanScreen(
                         discoveredDirectories = uiState.discoveredDirectories,
                         isDiscovering = uiState.isDiscoveringDirs,
                         batchSize = uiState.batchSize,
+                        rescanExistingPhotos = uiState.rescanExistingPhotos,
                         onToggleDir = viewModel::toggleDirectory,
                         onSelectAll = viewModel::selectAllDirectories,
                         onDeselectAll = viewModel::deselectAllDirectories,
@@ -211,9 +216,32 @@ private fun ScanHeader(uiState: ScanUiState) {
 private fun ScanSummary(uiState: ScanUiState) {
     GlassCard(modifier = Modifier.fillMaxWidth()) {
         Row(modifier = Modifier.padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Column { Text("已选目录", color = Color.White.copy(alpha = 0.55f), style = MaterialTheme.typography.labelMedium); Text("${uiState.selectedDirectories.size} 个", color = Color.White, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
-            Column(horizontalAlignment = Alignment.CenterHorizontally) { Text("扫描进度", color = Color.White.copy(alpha = 0.55f), style = MaterialTheme.typography.labelMedium); Text("${uiState.scannedCount}/${uiState.totalToScan}", color = BlueAccent, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
-            Column(horizontalAlignment = Alignment.End) { Text("处理进度", color = Color.White.copy(alpha = 0.55f), style = MaterialTheme.typography.labelMedium); Text("${uiState.processedCount}/${uiState.totalToProcess}", color = GreenAccent, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
+            Column { Text(stringResource(R.string.scan_selected_dirs), color = Color.White.copy(alpha = 0.55f), style = MaterialTheme.typography.labelMedium); Text("${uiState.selectedDirectories.size} 个", color = Color.White, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
+            Column(horizontalAlignment = Alignment.CenterHorizontally) { Text(stringResource(R.string.scan_progress), color = Color.White.copy(alpha = 0.55f), style = MaterialTheme.typography.labelMedium); Text("${uiState.scannedCount}/${uiState.totalToScan}", color = BlueAccent, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
+            Column(horizontalAlignment = Alignment.End) { Text(stringResource(R.string.scan_processing_progress), color = Color.White.copy(alpha = 0.55f), style = MaterialTheme.typography.labelMedium); Text("${uiState.processedCount}/${uiState.totalToProcess}", color = GreenAccent, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold) }
+        }
+    }
+}
+
+@Composable
+private fun PermissionNotice(onRequestPermission: () -> Unit) {
+    Surface(
+        color = YellowAccent.copy(alpha = 0.14f),
+        shape = RoundedCornerShape(16.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Icon(Icons.Default.Info, contentDescription = null, tint = YellowAccent)
+                Text(
+                    text = stringResource(R.string.permission_partial_scan_warning),
+                    color = Color.White.copy(alpha = 0.84f),
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+            OutlinedButton(onClick = onRequestPermission, modifier = Modifier.fillMaxWidth()) {
+                Text(stringResource(R.string.permission_reauthorize))
+            }
         }
     }
 }
@@ -226,8 +254,8 @@ fun ScanLogPanel(logs: List<ScanLogEntry>) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Icon(Icons.Default.Menu, contentDescription = null, tint = BlueAccent, modifier = Modifier.size(18.dp))
-                Text("处理日志", style = MaterialTheme.typography.titleSmall, color = Color.White, fontWeight = FontWeight.Bold)
-                Text("${logs.size} 条", style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.5f))
+                Text(stringResource(R.string.scan_log_title), style = MaterialTheme.typography.titleSmall, color = Color.White, fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.scan_log_count, logs.size), style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.5f))
             }
             Surface(color = Color(0xFF0D1117).copy(alpha = 0.92f), shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth().heightIn(max = 320.dp)) {
                 LazyColumn(state = listState, modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -262,6 +290,7 @@ fun ScanReadyContent(
     discoveredDirectories: List<DirectoryInfo>,
     isDiscovering: Boolean,
     batchSize: Int,
+    rescanExistingPhotos: Boolean,
     onToggleDir: (String) -> Unit,
     onSelectAll: () -> Unit,
     onDeselectAll: () -> Unit,
@@ -272,10 +301,41 @@ fun ScanReadyContent(
 ) {
     val allPaths = discoveredDirectories.map { it.relativePath }.toSet()
     val isAllSelected = allPaths.isNotEmpty() && selectedDirectories.containsAll(allPaths)
+    val selectedImageCount = discoveredDirectories
+        .filter { it.relativePath in selectedDirectories }
+        .sumOf { it.imageCount }
+    val targetLabel = if (rescanExistingPhotos) {
+        stringResource(R.string.scan_all_photos_suffix)
+    } else {
+        stringResource(R.string.scan_new_photos_suffix)
+    }
     GlassCard(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Text(stringResource(R.string.scan_scope), style = MaterialTheme.typography.titleMedium, color = Color.White, fontWeight = FontWeight.Bold)
             Text(stringResource(R.string.scan_scope_hint), style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.65f))
+            val summary = if (batchSize > 0) {
+                stringResource(
+                    R.string.scan_ready_summary_limited,
+                    selectedDirectories.size,
+                    selectedImageCount,
+                    batchSize,
+                    targetLabel
+                )
+            } else {
+                stringResource(
+                    R.string.scan_ready_summary_all,
+                    selectedDirectories.size,
+                    selectedImageCount,
+                    targetLabel
+                )
+            }
+            Text(
+                text = summary,
+                style = MaterialTheme.typography.bodySmall,
+                color = BlueAccent,
+                fontWeight = FontWeight.Medium
+            )
+            BatchSizeSelector(batchSize = batchSize, onBatchSizeChange = onBatchSizeChange)
             if (discoveredDirectories.isEmpty() && isDiscovering) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = BlueAccent)
@@ -372,14 +432,18 @@ fun ScanProgressContent(
         Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             CircularProgressIndicator(modifier = Modifier.size(60.dp), color = BlueAccent, strokeWidth = 5.dp, trackColor = BlueAccent.copy(alpha = 0.2f))
             Spacer(modifier = Modifier.height(16.dp))
-            Text(text = if (uiState.isPaused) "已暂停" else "正在扫描...", style = MaterialTheme.typography.titleLarge, color = Color.White)
+            Text(
+                text = if (uiState.isPaused) stringResource(R.string.scan_paused) else stringResource(R.string.scan_in_progress),
+                style = MaterialTheme.typography.titleLarge,
+                color = Color.White
+            )
             Spacer(modifier = Modifier.height(12.dp))
             if (uiState.totalToScan > 0) {
                 val progress = uiState.scannedCount.toFloat() / uiState.totalToScan
                 GradientProgressBar(progress = if (progress.isNaN() || progress.isInfinite()) 0f else progress, modifier = Modifier.fillMaxWidth())
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text(text = "已扫描", style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.6f))
+                    Text(text = stringResource(R.string.scan_scanned), style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.6f))
                     Text(text = "${uiState.scannedCount} / ${uiState.totalToScan}", style = MaterialTheme.typography.titleMedium, color = BlueAccent, fontWeight = FontWeight.Bold)
                 }
             }
@@ -396,7 +460,7 @@ fun ScanProgressContent(
                 ) {
                     Icon(if (uiState.isPaused) Icons.Default.PlayArrow else Icons.Default.Pause, contentDescription = null)
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text(if (uiState.isPaused) "继续" else "暂停")
+                    Text(if (uiState.isPaused) stringResource(R.string.scan_resume) else stringResource(R.string.scan_pause))
                 }
                 OutlinedButton(
                     onClick = onStopScan,
@@ -406,7 +470,7 @@ fun ScanProgressContent(
                 ) {
                     Icon(Icons.Default.Stop, contentDescription = null)
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("停止")
+                    Text(stringResource(R.string.scan_stop))
                 }
             }
         }
@@ -421,9 +485,9 @@ fun ProcessingCompleteContent(uiState: ScanUiState, onReset: () -> Unit) {
                 Icon(imageVector = Icons.Default.Celebration, contentDescription = null, modifier = Modifier.size(36.dp), tint = YellowAccent)
             }
             Spacer(modifier = Modifier.height(16.dp))
-            Text(text = "本地处理完成！", style = MaterialTheme.typography.titleLarge, color = Color.White)
+            Text(text = stringResource(R.string.scan_complete_title), style = MaterialTheme.typography.titleLarge, color = Color.White)
             Spacer(modifier = Modifier.height(8.dp))
-            Text(text = "发现 ${uiState.uselessFound} 张疑似无用照片\n前往\"审查\"页面查看并清理", style = MaterialTheme.typography.bodyLarge, color = Color.White.copy(alpha = 0.8f), textAlign = TextAlign.Center)
+            Text(text = stringResource(R.string.scan_complete_body, uiState.uselessFound), style = MaterialTheme.typography.bodyLarge, color = Color.White.copy(alpha = 0.8f), textAlign = TextAlign.Center)
             Spacer(modifier = Modifier.height(24.dp))
             OutlinedButton(
                 onClick = onReset,
@@ -433,7 +497,7 @@ fun ProcessingCompleteContent(uiState: ScanUiState, onReset: () -> Unit) {
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Icon(Icons.Default.Refresh, contentDescription = null)
-                    Text("重新扫描", fontSize = 16.sp)
+                    Text(stringResource(R.string.scan_rescan), fontSize = 16.sp)
                 }
             }
         }

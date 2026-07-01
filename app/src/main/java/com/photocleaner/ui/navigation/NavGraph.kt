@@ -2,11 +2,11 @@ package com.photocleaner.ui.navigation
 
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Preview
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
@@ -48,7 +48,7 @@ sealed class Screen(val route: Any, val titleRes: Int, val icon: ImageVector) {
     data object Scan : Screen(ScanRoute, R.string.nav_scan, Icons.Default.CameraAlt)
     data object Review : Screen(ReviewRoute, R.string.nav_review, Icons.Default.Preview)
     data object Stats : Screen(StatsRoute, R.string.nav_stats, Icons.Default.BarChart)
-    data object Settings : Screen(SettingsRoute, R.string.nav_settings, Icons.Default.Info)
+    data object Settings : Screen(SettingsRoute, R.string.nav_settings, Icons.Default.Settings)
 }
 
 @Composable
@@ -91,7 +91,9 @@ fun NavGraph(
         NavHost(
             navController = navController,
             startDestination = HomeRoute,
-            modifier = Modifier.padding(innerPadding)
+            modifier = Modifier
+                .padding(innerPadding)
+                .statusBarsPadding()
         ) {
             composable<HomeRoute> {
                 HomeScreen(
@@ -113,7 +115,7 @@ fun NavGraph(
                 )
             }
             composable<StatsRoute> { StatsScreen() }
-            composable<SettingsRoute> { SettingsScreen() }
+            composable<SettingsRoute> { SettingsScreen(onRequestPermission = onMissingPermission) }
         }
     }
 }

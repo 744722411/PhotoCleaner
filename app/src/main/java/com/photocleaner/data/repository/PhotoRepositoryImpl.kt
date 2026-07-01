@@ -88,14 +88,17 @@ class PhotoRepositoryImpl @Inject constructor(
                 return@use
             }
 
+            val normalizedSelectedDirectories = selectedDirectories.mapTo(mutableSetOf()) { it.normalizedDirectory() }
+
             while (cursor.moveToNext()) {
                 if (useDirectoryFilter) {
-                    val relativePath = if (relPathCol >= 0) cursor.getString(relPathCol) ?: "" else ""
-                    val fullPath = if (dataCol >= 0) cursor.getString(dataCol) ?: "" else ""
-                    val matchesAny = selectedDirectories.any { dir ->
-                        relativePath.startsWith(dir, ignoreCase = true) ||
+                    val relativePath = if (relPathCol >= 0) cursor.getString(relPathCol).orEmpty().normalizedDirectory() else ""
+                    val fullPath = if (dataCol >= 0) cursor.getString(dataCol).orEmpty().normalizedDirectory() else ""
+                    val matchesAny = normalizedSelectedDirectories.any { dir ->
+                        relativePath == dir ||
+                        relativePath.startsWith("$dir/", ignoreCase = true) ||
                         fullPath.contains("/$dir/", ignoreCase = true) ||
-                        fullPath.contains("\\$dir\\", ignoreCase = true)
+                        fullPath.endsWith("/$dir", ignoreCase = true)
                     }
                     if (!matchesAny) continue
                 }
@@ -291,6 +294,11 @@ class PhotoRepositoryImpl @Inject constructor(
         } else {
             arrayOf(MediaStore.Images.Media.DATA)
         }
+
+    private fun String.normalizedDirectory(): String =
+        replace('\\', '/')
+            .trim()
+            .trim('/')
 
     private fun queryImages(
         projection: Array<String>,

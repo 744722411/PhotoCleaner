@@ -22,7 +22,6 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CleaningServices
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Preview
 import androidx.compose.material.icons.filled.Search
@@ -126,7 +125,7 @@ fun HomeScreen(
                 }
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     ModernActionButton(title = stringResource(R.string.home_action_stats_title), subtitle = stringResource(R.string.home_action_stats_sub), icon = Icons.Default.BarChart, gradient = Brush.linearGradient(listOf(Purple80, Color(0xFF7B1FA2))), onClick = onNavigateToStats, modifier = Modifier.weight(1f))
-                    ModernActionButton(title = stringResource(R.string.home_action_settings_title), subtitle = stringResource(R.string.home_action_settings_sub), icon = Icons.Default.Info, gradient = Brush.linearGradient(listOf(YellowAccent, Color(0xFFF57F17))), onClick = onNavigateToSettings, modifier = Modifier.weight(1f))
+                    ModernActionButton(title = stringResource(R.string.home_action_settings_title), subtitle = stringResource(R.string.home_action_settings_sub), icon = Icons.Default.Settings, gradient = Brush.linearGradient(listOf(YellowAccent, Color(0xFFF57F17))), onClick = onNavigateToSettings, modifier = Modifier.weight(1f))
                 }
             }
         }
