@@ -135,7 +135,7 @@ class ScanPhotosUseCase @Inject constructor(
             }
         }
 
-        onLog(ScanLog("", ScanLogStatus.INFO, "扫描完成！共 ${results.size} 张$modeLabel已录入"))
+        onLog(ScanLog("", ScanLogStatus.INFO, "扫描完成！共 ${results.size} 张${modeLabel}已录入"))
         return results
     }
 
