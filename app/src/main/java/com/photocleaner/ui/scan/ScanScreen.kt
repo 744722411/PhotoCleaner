@@ -187,10 +187,7 @@ fun ScanScreen(
             onDeselectAll = viewModel::deselectAllDirectories,
             onRefreshDirs = viewModel::discoverDirectories,
             onDismiss = viewModel::hideDirectoryPicker,
-            onConfirm = {
-                viewModel.saveDirectories()
-                viewModel.hideDirectoryPicker()
-            }
+            onConfirm = viewModel::confirmDirectoryPicker
         )
     }
 }

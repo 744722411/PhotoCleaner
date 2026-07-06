@@ -23,6 +23,8 @@ class PhotoClassifierImpl @Inject constructor(
     @ApplicationContext private val context: Context
 ) : PhotoClassifier {
 
+    private val labeler by lazy { ImageLabeling.getClient(ImageLabelerOptions.DEFAULT_OPTIONS) }
+
     override suspend fun classify(photo: Photo): Photo {
         return try {
             val uri = Uri.parse(photo.uri)
@@ -53,59 +55,62 @@ class PhotoClassifierImpl @Inject constructor(
                 )
             } ?: return photo
 
-            if (ImageUtils.isBlank(bitmap)) {
-                return photo.copy(
-                    isLocalUseless = true,
-                    localReason = "空白照片",
-                    classification = Classification.USELESS,
-                    confidence = 0.95f,
-                    category = "blank_photo"
-                )
-            }
-
-            if (BlurDetector.isBlurry(bitmap)) {
-                return photo.copy(
-                    isLocalUseless = true,
-                    localReason = "模糊照片",
-                    classification = Classification.USELESS,
-                    confidence = 0.9f,
-                    category = "blurry_photo"
-                )
-            }
-
-            var mlKitCategory = ""
-            var mlKitClassification: Classification? = null
             try {
-                val labeler = ImageLabeling.getClient(ImageLabelerOptions.DEFAULT_OPTIONS)
-                val inputImage = InputImage.fromBitmap(bitmap, 0)
-                val labels = labeler.process(inputImage).await()
-                val documentLabels = setOf("Receipt", "Document", "Text", "Font", "Barcode")
-                for (label in labels) {
-                    if (label.confidence > 0.7f && documentLabels.contains(label.text)) {
-                        mlKitCategory = label.text.lowercase()
-                        mlKitClassification = Classification.UNCERTAIN
-                        break
-                    }
+                if (ImageUtils.isBlank(bitmap)) {
+                    return photo.copy(
+                        isLocalUseless = true,
+                        localReason = "空白照片",
+                        classification = Classification.USELESS,
+                        confidence = 0.95f,
+                        category = "blank_photo"
+                    )
                 }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (_: Throwable) {
-                // ML Kit is optional; fall through to the plain dHash result.
-            }
 
-            val dHash = ImageUtils.computeDHash(bitmap)
-            val withCategory = if (mlKitClassification != null) {
-                photo.copy(
-                    isLocalUseless = true,
-                    localReason = "文档票据",
-                    classification = Classification.UNCERTAIN,
-                    confidence = 0.8f,
-                    category = mlKitCategory
-                )
-            } else {
-                photo
+                if (BlurDetector.isBlurry(bitmap)) {
+                    return photo.copy(
+                        isLocalUseless = true,
+                        localReason = "模糊照片",
+                        classification = Classification.USELESS,
+                        confidence = 0.9f,
+                        category = "blurry_photo"
+                    )
+                }
+
+                var mlKitCategory = ""
+                var mlKitClassification: Classification? = null
+                try {
+                    val inputImage = InputImage.fromBitmap(bitmap, 0)
+                    val labels = labeler.process(inputImage).await()
+                    val documentLabels = setOf("Receipt", "Document", "Text", "Font", "Barcode")
+                    for (label in labels) {
+                        if (label.confidence > 0.7f && documentLabels.contains(label.text)) {
+                            mlKitCategory = label.text.lowercase()
+                            mlKitClassification = Classification.UNCERTAIN
+                            break
+                        }
+                    }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (_: Throwable) {
+                    // ML Kit is optional; fall through to the plain dHash result.
+                }
+
+                val dHash = ImageUtils.computeDHash(bitmap)
+                val withCategory = if (mlKitClassification != null) {
+                    photo.copy(
+                        isLocalUseless = true,
+                        localReason = "文档票据",
+                        classification = Classification.UNCERTAIN,
+                        confidence = 0.8f,
+                        category = mlKitCategory
+                    )
+                } else {
+                    photo
+                }
+                withCategory.copy(dHash = dHash)
+            } finally {
+                bitmap.recycle()
             }
-            withCategory.copy(dHash = dHash)
         } catch (e: CancellationException) {
             throw e
         } catch (_: Throwable) {

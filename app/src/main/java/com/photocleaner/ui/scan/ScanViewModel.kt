@@ -2,6 +2,7 @@
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.photocleaner.domain.model.Classification
 import com.photocleaner.domain.repository.PhotoRepository
 import com.photocleaner.domain.repository.SettingsRepository
 import com.photocleaner.domain.usecase.ScanLogStatus
@@ -72,7 +73,16 @@ class ScanViewModel @Inject constructor(
     }
 
     fun hideDirectoryPicker() {
-        localState.update { it.copy(showDirectoryPicker = false) }
+        viewModelScope.launch {
+            val persisted = settingsRepository.getSelectedDirectoriesSync()
+            hasDirectorySelectionDraft = false
+            localState.update {
+                it.copy(
+                    showDirectoryPicker = false,
+                    selectedDirectories = persisted
+                )
+            }
+        }
     }
 
     fun discoverDirectories() {
@@ -128,7 +138,7 @@ class ScanViewModel @Inject constructor(
     }
 
     fun setBatchSize(size: Int) {
-        viewModelScope.launch { settingsRepository.setBatchSize(size) }
+        viewModelScope.launch { settingsRepository.setBatchSize(size.coerceAtLeast(0)) }
     }
 
     suspend fun persistSelectedDirectories() {
@@ -152,6 +162,21 @@ class ScanViewModel @Inject constructor(
 
     fun saveDirectories() {
         viewModelScope.launch { persistSelectedDirectories() }
+    }
+
+    fun confirmDirectoryPicker() {
+        viewModelScope.launch {
+            val selected = getEffectiveSelectedDirectories()
+            settingsRepository.setSelectedDirectories(selected)
+            scanStateHolder.updateState { it.copy(selectedDirectories = selected) }
+            hasDirectorySelectionDraft = false
+            localState.update {
+                it.copy(
+                    showDirectoryPicker = false,
+                    selectedDirectories = selected
+                )
+            }
+        }
     }
 
     fun startScan() {
@@ -271,13 +296,13 @@ class ScanViewModel @Inject constructor(
                     return@launch
                 }
 
-                val uselessCount = photoRepository.getUselessCountSync()
+                val scanUselessCount = scannedPhotos.count { it.classification == Classification.USELESS }
 
                 scanStateHolder.updateState {
                     it.copy(
                         isScanning = false,
                         scanComplete = true,
-                        uselessFound = uselessCount,
+                        uselessFound = scanUselessCount,
                         processedCount = scannedPhotos.size,
                         totalToProcess = scannedPhotos.size
                     )

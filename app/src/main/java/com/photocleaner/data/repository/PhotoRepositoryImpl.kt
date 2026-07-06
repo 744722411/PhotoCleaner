@@ -235,10 +235,15 @@ class PhotoRepositoryImpl @Inject constructor(
                 val inputStream = context.contentResolver.openInputStream(uri)
                 if (inputStream != null) {
                     val trashFile = File(trashDir, "${photo.id}_${photo.displayName}")
-                    trashFile.outputStream().use { output -> inputStream.copyTo(output) }
-                    inputStream.close()
-                    context.contentResolver.delete(uri, null, null)
-                    ids.add(photo.id)
+                    inputStream.use { input ->
+                        trashFile.outputStream().use { output -> input.copyTo(output) }
+                    }
+                    val deleted = context.contentResolver.delete(uri, null, null)
+                    if (deleted > 0) {
+                        ids.add(photo.id)
+                    } else {
+                        trashFile.delete()
+                    }
                 }
             } catch (e: Exception) {
                 android.util.Log.e("PhotoRepositoryImpl", "Failed to delete photo: ${photo.displayName}", e)
@@ -259,13 +264,11 @@ class PhotoRepositoryImpl @Inject constructor(
         photos.forEach { photo ->
             try {
                 val trashFile = File(trashDir, "${photo.id}_${photo.displayName}")
-                if (trashFile.exists()) {
-                    if (photo.filePath.isNotBlank()) {
-                        val originalFile = File(photo.filePath)
-                        originalFile.parentFile?.mkdirs()
-                        trashFile.copyTo(originalFile, overwrite = true)
-                        android.media.MediaScannerConnection.scanFile(context, arrayOf(photo.filePath), null, null)
-                    }
+                if (trashFile.exists() && photo.filePath.isNotBlank()) {
+                    val originalFile = File(photo.filePath)
+                    originalFile.parentFile?.mkdirs()
+                    trashFile.copyTo(originalFile, overwrite = true)
+                    android.media.MediaScannerConnection.scanFile(context, arrayOf(photo.filePath), null, null)
                     ids.add(photo.id)
                     trashFile.delete()
                 }
@@ -279,6 +282,12 @@ class PhotoRepositoryImpl @Inject constructor(
     override suspend fun getPhotoById(id: Long): Photo? = photoDao.getPhotoById(id)?.let { mapper.toDomain(it) }
 
     override suspend fun getAllPhotoIds(): List<Long> = photoDao.getAllPhotoIds()
+
+    override suspend fun getActivePhotoIds(): List<Long> = photoDao.getActivePhotoIds()
+
+    override suspend fun clearTrashStatus(ids: List<Long>) {
+        if (ids.isNotEmpty()) photoDao.clearTrashStatus(ids)
+    }
 
     override suspend fun deletePhotosByIds(ids: List<Long>) = photoDao.deleteByIds(ids)
 

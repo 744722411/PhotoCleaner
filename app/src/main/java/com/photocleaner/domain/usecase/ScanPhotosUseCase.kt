@@ -36,14 +36,20 @@ class ScanPhotosUseCase @Inject constructor(
     ): List<Photo> {
         onLog(ScanLog("", ScanLogStatus.INFO, "正在扫描相册..."))
         val existingPhotoIds = repository.getAllPhotoIds().toSet()
+        val activePhotoIds = repository.getActivePhotoIds().toSet()
         val photos = if (selectedDirectories.isNotEmpty()) {
             repository.scanPhotos(selectedDirectories)
         } else {
             repository.scanPhotos()
         }
 
+        val scannedIds = photos.map { it.id }.toSet()
+        val restoredIds = scannedIds - activePhotoIds
+        if (restoredIds.isNotEmpty()) {
+            repository.clearTrashStatus(restoredIds.toList())
+        }
+
         if (selectedDirectories.isEmpty()) {
-            val scannedIds = photos.map { it.id }.toSet()
             val toDelete = existingPhotoIds - scannedIds
             if (toDelete.isNotEmpty()) {
                 onLog(ScanLog("", ScanLogStatus.INFO, "清理 ${toDelete.size} 张已删除照片的记录..."))
@@ -54,7 +60,7 @@ class ScanPhotosUseCase @Inject constructor(
         val candidates = if (rescanExistingPhotos) {
             photos
         } else {
-            photos.filter { it.id !in existingPhotoIds }
+            photos.filter { it.id !in activePhotoIds }
         }
         val modeLabel = if (rescanExistingPhotos) "照片" else "新照片"
         val limited = if (batchSize > 0 && candidates.size > batchSize) {

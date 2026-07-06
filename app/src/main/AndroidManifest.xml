@@ -9,6 +9,9 @@
     <!-- 读取外部存储（Android 12 及以下兼容） -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
         android:maxSdkVersion="32" />
+    <!-- Android 9 及以下删除共享照片需要写入外部存储权限 -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28" />
 
     <!-- 显式移除依赖库可能注入的多余权限 -->
     <uses-permission android:name="android.permission.SEND_SMS" tools:node="remove" />

@@ -51,6 +51,12 @@ interface PhotoDao {
     @Query("SELECT id FROM photos")
     suspend fun getAllPhotoIds(): List<Long>
 
+    @Query("SELECT id FROM photos WHERE isInTrash = 0")
+    suspend fun getActivePhotoIds(): List<Long>
+
+    @Query("UPDATE photos SET isInTrash = 0 WHERE id IN (:ids)")
+    suspend fun clearTrashStatus(ids: List<Long>)
+
     @Query("SELECT * FROM photos WHERE isInTrash = 1")
     suspend fun getTrashedPhotos(): List<PhotoEntity>
 }
