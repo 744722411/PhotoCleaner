@@ -20,7 +20,7 @@ object DatabaseModule {
     fun provideDatabase(@ApplicationContext context: Context): PhotoDatabase =
         Room.databaseBuilder(context, PhotoDatabase::class.java, "photo_cleaner.db")
             .addMigrations(*PhotoDatabaseMigrations.ALL)
-            .fallbackToDestructiveMigrationOnDowngrade()
+            .fallbackToDestructiveMigrationOnDowngrade(dropAllTables = true)
             .build()
 
     @Provides

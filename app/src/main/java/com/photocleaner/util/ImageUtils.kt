@@ -2,6 +2,7 @@ package com.photocleaner.util
 
 import android.graphics.Bitmap
 import android.graphics.Color
+import java.util.Locale
 
 object ImageUtils {
     private const val SAMPLE_STEP = 5
@@ -51,8 +52,8 @@ object ImageUtils {
         return when {
             bytes < 1024 -> "${bytes}B"
             bytes < 1024 * 1024 -> "${bytes / 1024}KB"
-            bytes < 1024 * 1024 * 1024 -> String.format("%.1fMB", bytes / (1024.0 * 1024.0))
-            else -> String.format("%.2fGB", bytes / (1024.0 * 1024.0 * 1024.0))
+            bytes < 1024 * 1024 * 1024 -> String.format(Locale.US, "%.1fMB", bytes / (1024.0 * 1024.0))
+            else -> String.format(Locale.US, "%.2fGB", bytes / (1024.0 * 1024.0 * 1024.0))
         }
     }
 

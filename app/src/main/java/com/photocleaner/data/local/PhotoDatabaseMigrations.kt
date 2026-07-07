@@ -20,10 +20,12 @@ object PhotoDatabaseMigrations {
         }
     }
 
+    // Schemas 3 and 4 are structurally identical (same identityHash); v4 was a version
+    // bump with no schema change. This no-op migration only exists to give users on v3
+    // a valid path to v4. The indices were already created by MIGRATION_2_3.
     val MIGRATION_3_4 = object : Migration(3, 4) {
         override fun migrate(db: SupportSQLiteDatabase) {
-            db.execSQL("CREATE INDEX IF NOT EXISTS `index_photos_classification` ON `photos` (`classification`)")
-            db.execSQL("CREATE INDEX IF NOT EXISTS `index_photos_isInTrash` ON `photos` (`isInTrash`)")
+            // Intentionally empty.
         }
     }
 

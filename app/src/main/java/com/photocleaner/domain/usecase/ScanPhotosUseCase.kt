@@ -146,6 +146,9 @@ class ScanPhotosUseCase @Inject constructor(
     }
 
     private companion object {
-        const val CLASSIFY_PARALLELISM = 1
+        // Classify several photos concurrently. Bitmaps are downsampled to ~800px
+        // (≈2.5MB) and recycled per item, so a small fan-out stays well within memory
+        // while overlapping the decode + ML Kit latency across CPU cores.
+        const val CLASSIFY_PARALLELISM = 4
     }
 }

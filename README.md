@@ -19,11 +19,21 @@
 
 PhotoCleaner is an Android photo cleanup assistant focused on local, on-device analysis. It scans selected folders, detects obvious low-quality or low-value photos, groups visually similar shots, and gives you a review screen before anything is removed.
 
-Version 1.8.0 improves the scoped scanning flow: selected folders are now honored end to end, scan progress is persisted after each processed item, pause/stop behavior is clearer, partial photo access is surfaced in the UI, and the Settings screen now controls scan batch size and whether existing indexed photos should be re-analyzed.
+Version 1.9.0 is a code-quality, standards, and build-size pass on top of the 1.8.0 scanning work: the whole stack was reviewed against current Android 14+ requirements, a rendering bug in the statistics pie chart was fixed, scan classification now runs in parallel, and the release build strips unused resources and locales.
 
 The app remains fully offline. It does not store API keys, does not include Retrofit/OkHttp/Moshi networking code, and explicitly removes the `INTERNET` permission from the merged manifest.
 
-## What's New in v1.8.0
+## What's New in v1.9.0
+
+- Fixed the statistics pie chart rendering every slice gray; slices are now colored by classification.
+- Made file-size formatting locale-independent (`Locale.US`) so values render consistently and unit tests stay stable.
+- Scan classification now processes photos in parallel (4 at a time) instead of one by one, speeding up large scans.
+- Migrated `fallbackToDestructiveMigrationOnDowngrade` to the current non-deprecated Room API.
+- Enabled R8 full mode and resource/locale shrinking (Chinese-only), reducing release APK size.
+- Removed dead code (unused DAO query) and clarified the redundant v3→v4 database migration.
+- Verified Android 14+ compliance: scoped media permissions, partial photo access, and system-trash deletion.
+
+## Earlier: v1.8.0
 
 - Fixed selected-directory scanning so a scan started from the quick entry only processes the chosen directories.
 - Persisted completed scan results incrementally, so stopping a scan keeps already detected photos available on the Review screen.

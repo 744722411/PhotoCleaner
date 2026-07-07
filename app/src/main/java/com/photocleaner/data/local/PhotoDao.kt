@@ -56,7 +56,4 @@ interface PhotoDao {
 
     @Query("UPDATE photos SET isInTrash = 0 WHERE id IN (:ids)")
     suspend fun clearTrashStatus(ids: List<Long>)
-
-    @Query("SELECT * FROM photos WHERE isInTrash = 1")
-    suspend fun getTrashedPhotos(): List<PhotoEntity>
 }

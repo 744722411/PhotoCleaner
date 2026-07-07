@@ -78,7 +78,7 @@ fun StatsScreen(
                             val total = uiState.categoryStats.sumOf { it.count }.toFloat()
                             if (total > 0) {
                                 Box(modifier = Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
-                                    AnimatedPieChart(data = uiState.categoryStats.associate { it.classification.displayName to it.count }, total = total)
+                                    AnimatedPieChart(data = uiState.categoryStats.associate { it.classification to it.count }, total = total)
                                 }
                             }
                             uiState.categoryStats.take(3).forEach { stat ->
@@ -127,7 +127,7 @@ fun StatsScreen(
 }
 
 @Composable
-fun AnimatedPieChart(data: Map<String, Int>, total: Float) {
+fun AnimatedPieChart(data: Map<Classification, Int>, total: Float) {
     val animatedProgress by animateFloatAsState(targetValue = 1f, animationSpec = tween(1500, easing = FastOutSlowInEasing), label = "pie")
     Canvas(modifier = Modifier.size(180.dp)) {
         val strokeWidth = 30.dp.toPx()
@@ -137,9 +137,9 @@ fun AnimatedPieChart(data: Map<String, Int>, total: Float) {
         data.forEach { (classification, count) ->
             val sweepAngle = (count / total) * 360f * animatedProgress
             val color = when (classification) {
-                "无用" -> RedAccent
-                "保留" -> GreenAccent
-                "待定" -> YellowAccent
+                Classification.USELESS -> RedAccent
+                Classification.KEEP -> GreenAccent
+                Classification.UNCERTAIN -> YellowAccent
                 else -> Color.Gray
             }
             drawArc(color = color, startAngle = startAngle, sweepAngle = sweepAngle, useCenter = false, topLeft = Offset(center.x - radius, center.y - radius), size = Size(radius * 2, radius * 2), style = Stroke(width = strokeWidth, cap = StrokeCap.Round))

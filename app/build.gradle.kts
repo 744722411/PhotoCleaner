@@ -16,8 +16,8 @@ android {
         applicationId = "com.photocleaner"
         minSdk = 26
         targetSdk = 36
-        versionCode = 18
-        versionName = "1.8.0"
+        versionCode = 19
+        versionName = "1.9.0"
         testInstrumentationRunner = "dagger.hilt.android.testing.HiltTestRunner"
     }
 
@@ -39,6 +39,24 @@ android {
     buildFeatures {
         buildConfig = false
         compose = true
+    }
+
+    // App ships Chinese-only strings; drop the ~70 bundled translations that
+    // AndroidX / Material3 / Play Services pull in to shrink the APK.
+    androidResources {
+        localeFilters += listOf("zh")
+    }
+
+    packaging {
+        resources {
+            excludes += listOf(
+                "/META-INF/{AL2.0,LGPL2.1}",
+                "/META-INF/*.version",
+                "/META-INF/*.kotlin_module",
+                "DebugProbesKt.bin",
+                "kotlin-tooling-metadata.json"
+            )
+        }
     }
 
     testOptions {
