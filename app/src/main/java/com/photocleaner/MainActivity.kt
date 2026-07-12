@@ -6,11 +6,16 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.SnackbarResult
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.photocleaner.ui.navigation.NavGraph
 import com.photocleaner.ui.theme.PhotoCleanerTheme
 import com.photocleaner.util.PermissionHelper
@@ -27,11 +32,25 @@ class MainActivity : ComponentActivity() {
         setContent {
             PhotoCleanerTheme {
                 val snackbarHostState = remember { SnackbarHostState() }
+                var mediaAccessLevel by remember {
+                    mutableStateOf(PermissionHelper.getMediaAccessLevel(this@MainActivity))
+                }
+                val lifecycleOwner = LocalLifecycleOwner.current
+
+                DisposableEffect(lifecycleOwner) {
+                    val observer = LifecycleEventObserver { _, event ->
+                        if (event == Lifecycle.Event.ON_RESUME) {
+                            mediaAccessLevel = PermissionHelper.getMediaAccessLevel(this@MainActivity)
+                        }
+                    }
+                    lifecycleOwner.lifecycle.addObserver(observer)
+                    onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+                }
 
                 val permissionLauncher = rememberLauncherForActivityResult(
                     ActivityResultContracts.RequestMultiplePermissions()
-                ) { permissions ->
-                    // Triggered after the user interacts with the permission dialog.
+                ) {
+                    mediaAccessLevel = PermissionHelper.getMediaAccessLevel(this@MainActivity)
                 }
 
                 LaunchedEffect(Unit) {
@@ -42,6 +61,7 @@ class MainActivity : ComponentActivity() {
 
                 NavGraph(
                     snackbarHostState = snackbarHostState,
+                    mediaAccessLevel = mediaAccessLevel,
                     onMissingPermission = {
                         permissionLauncher.launch(PermissionHelper.getRequiredPermissions())
                     }

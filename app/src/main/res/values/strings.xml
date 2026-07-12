@@ -40,6 +40,12 @@
     <string name="close">关闭</string>
     <string name="undo">撤销</string>
     <string name="commit_delete">提交删除</string>
+    <string name="review_grid_view">网格视图</string>
+    <string name="review_list_view">卡片视图</string>
+    <string name="review_select_all">全选照片</string>
+    <string name="review_deselect_all">取消全选</string>
+    <string name="review_enter_batch">进入批量选择</string>
+    <string name="review_exit_batch">退出批量选择</string>
 
     <!-- Scan screen -->
     <string name="scan_title">照片扫描</string>
@@ -53,7 +59,7 @@
     <string name="scan_log_count">%1$d 条</string>
     <string name="scan_scope">扫描范围</string>
     <string name="scan_scope_hint">先确认本轮要覆盖的目录，再决定处理数量。</string>
-    <string name="scan_discovering">正在扫描设备目录...</string>
+    <string name="scan_discovering">正在扫描设备目录…</string>
     <string name="scan_empty_dirs_title">先扫描设备目录</string>
     <string name="scan_discover_dirs">发现目录</string>
     <string name="scan_select_all">全选</string>

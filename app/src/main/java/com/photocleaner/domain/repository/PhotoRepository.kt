@@ -23,7 +23,6 @@ interface PhotoRepository {
     suspend fun discoverDirectories(): List<DirectoryInfo>
     suspend fun updateClassification(photoId: Long, classification: Classification, confidence: Float, category: String)
     suspend fun deletePhotos(photos: List<Photo>)
-    suspend fun restorePhotos(photos: List<Photo>)
     suspend fun getPhotoById(id: Long): Photo?
     suspend fun getAllPhotoIds(): List<Long>
     suspend fun getActivePhotoIds(): List<Long>

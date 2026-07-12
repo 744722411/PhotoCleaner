@@ -39,7 +39,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -53,16 +52,14 @@ import com.photocleaner.ui.theme.GreenAccent
 import com.photocleaner.ui.theme.RedAccent
 import com.photocleaner.ui.theme.YellowAccent
 import com.photocleaner.util.MediaAccessLevel
-import com.photocleaner.util.PermissionHelper
 
 @Composable
 fun SettingsScreen(
+    mediaAccessLevel: MediaAccessLevel,
     onRequestPermission: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val context = LocalContext.current
-    val mediaAccessLevel = PermissionHelper.getMediaAccessLevel(context)
     val primaryColor = MaterialTheme.colorScheme.primary
     val secondaryColor = MaterialTheme.colorScheme.secondary
     val backgroundColor = MaterialTheme.colorScheme.background

@@ -35,6 +35,7 @@ fun StatsScreen(
     viewModel: StatsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val motionEnabled = rememberMotionEnabled()
     var isVisible by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { isVisible = true }
 
@@ -44,7 +45,10 @@ fun StatsScreen(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item {
-            AnimatedVisibility(visible = isVisible, enter = slideInVertically(initialOffsetY = { -it }, animationSpec = tween(600)) + fadeIn(tween(600))) {
+            AnimatedVisibility(
+                visible = isVisible,
+                enter = if (motionEnabled) slideInVertically(initialOffsetY = { -it }, animationSpec = tween(350)) + fadeIn(tween(350)) else fadeIn(tween(0))
+            ) {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Spacer(modifier = Modifier.height(8.dp))
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -71,7 +75,10 @@ fun StatsScreen(
 
         if (uiState.categoryStats.isNotEmpty()) {
             item {
-                AnimatedVisibility(visible = isVisible, enter = slideInVertically(initialOffsetY = { it / 2 }, animationSpec = tween(600, 300)) + fadeIn(tween(600, 300))) {
+                AnimatedVisibility(
+                    visible = isVisible,
+                    enter = if (motionEnabled) slideInVertically(initialOffsetY = { it / 2 }, animationSpec = tween(350)) + fadeIn(tween(350)) else fadeIn(tween(0))
+                ) {
                     GlassCard(modifier = Modifier.fillMaxWidth()) {
                         Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                             ModernSectionHeader(title = stringResource(R.string.stats_breakdown), icon = Icons.Default.PieChart)
@@ -104,7 +111,10 @@ fun StatsScreen(
 
         if (uiState.categoryStats.isNotEmpty()) {
             item {
-                AnimatedVisibility(visible = isVisible, enter = slideInVertically(initialOffsetY = { it / 2 }, animationSpec = tween(600, 400)) + fadeIn(tween(600, 400))) {
+                AnimatedVisibility(
+                    visible = isVisible,
+                    enter = if (motionEnabled) slideInVertically(initialOffsetY = { it / 2 }, animationSpec = tween(350)) + fadeIn(tween(350)) else fadeIn(tween(0))
+                ) {
                     GlassCard(modifier = Modifier.fillMaxWidth()) {
                         Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                             ModernSectionHeader(title = stringResource(R.string.stats_distribution), icon = Icons.Default.Category)
@@ -128,7 +138,12 @@ fun StatsScreen(
 
 @Composable
 fun AnimatedPieChart(data: Map<Classification, Int>, total: Float) {
-    val animatedProgress by animateFloatAsState(targetValue = 1f, animationSpec = tween(1500, easing = FastOutSlowInEasing), label = "pie")
+    val motionEnabled = rememberMotionEnabled()
+    val animatedProgress by animateFloatAsState(
+        targetValue = 1f,
+        animationSpec = if (motionEnabled) tween(500, easing = FastOutSlowInEasing) else tween(0),
+        label = "pie"
+    )
     Canvas(modifier = Modifier.size(180.dp)) {
         val strokeWidth = 30.dp.toPx()
         val radius = (size.minDimension - strokeWidth) / 2

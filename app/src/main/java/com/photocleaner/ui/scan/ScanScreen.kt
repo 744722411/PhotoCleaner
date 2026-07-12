@@ -89,6 +89,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun ScanScreen(
     snackbarHostState: SnackbarHostState,
+    mediaAccessLevel: MediaAccessLevel,
     onRequestPermission: () -> Unit,
     viewModel: ScanViewModel = hiltViewModel()
 ) {
@@ -97,7 +98,6 @@ fun ScanScreen(
     val scope = rememberCoroutineScope()
     val permissionMissingMsg = stringResource(R.string.permission_missing_scan)
     val grantLabel = stringResource(R.string.permission_grant)
-    val mediaAccessLevel = PermissionHelper.getMediaAccessLevel(context)
 
     fun startScanOrRequestPermission() {
         if (PermissionHelper.hasStoragePermission(context)) {

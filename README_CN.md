@@ -19,11 +19,20 @@
 
 PhotoCleaner 是一款 Android 本地照片清理助手。它会扫描你选择的相册目录，在设备端检测明显模糊、空白、截图、票据/文档、低价值或可能重复的照片，并把结果交给你在“审查”页逐项确认。
 
-v1.9.0 是在 1.8.0 扫描功能基础上的一次代码质量、标准合规和体积优化：对照 Android 14+ 现行要求完整审查了技术栈，修复了统计页饼图的渲染问题，扫描检测改为并行处理，Release 构建会剔除无用资源和多余语言。
+v1.10.0 围绕 Android 11+ 系统回收站、可观察媒体权限、自适应导航、无障碍、减少动态效果，以及最新稳定版 Kotlin / Compose / Hilt 技术栈完成现代化升级。
 
-应用仍然完全离线运行：不保存 API Key，不包含 Retrofit / OkHttp / Moshi 等联网分类代码，并在 Manifest 中显式移除 `INTERNET` 权限。
+应用仍然完全离线运行：不保存 API Key，不包含 Retrofit / OkHttp / Moshi 等联网分类代码，也不声明 `INTERNET` 权限。
 
-## v1.9.0 更新
+## v1.10.0 更新
+
+- 最低支持 Android 11，目标 SDK 升级至 37；所有清理统一经过系统回收站确认，移除不安全的旧系统直接删除和私有恢复分支。
+- 权限结果和 Activity 恢复时都会刷新媒体访问状态，扫描页和设置页保持同步。
+- 接入 Material 3 Adaptive Navigation Suite，并让审查网格根据手机、平板、横屏和折叠屏自动调整列数。
+- 为 TalkBack 补充图标描述和保留/删除自定义操作，并尊重系统动画时长设置。
+- 升级 Kotlin 2.4.0、KSP 2.3.10、Compose BOM 2026.06.01、Hilt 2.60.1、Hilt Navigation Compose 1.4.0 和 Turbine 1.2.1。
+- 新增系统回收站确认、取消和请求失败回归测试；单元测试、Lint、Debug 构建和 R8 Release 构建全部通过。
+
+## 历史更新：v1.9.0
 
 - 修复统计页饼图所有扇区都显示为灰色的问题，现在按分类正确着色。
 - 文件大小格式化改为与区域设置无关（`Locale.US`），显示一致且单元测试稳定。
@@ -68,13 +77,13 @@ Manifest 行为：
 - Android 13+ 使用 `READ_MEDIA_IMAGES`。
 - Android 14+ 使用 `READ_MEDIA_VISUAL_USER_SELECTED` 适配部分照片访问。
 - Android 12 及以下使用 `READ_EXTERNAL_STORAGE`。
-- 显式移除 `INTERNET` 以及依赖库可能合并进来的无关权限。
+- 不声明 `INTERNET` 或其他无关敏感权限。
 
 如果系统只授予“部分照片访问”，应用只能发现和扫描系统授权范围内的照片。扫描页和设置页会显示这一状态，并提供重新授权入口。
 
 ## 使用方法
 
-1. 在 Android 8.0+ 设备上安装 APK。
+1. 在 Android 11+ 设备上安装 APK。
 2. 按系统提示授予照片/媒体读取权限。
 3. 进入“扫描”，点击“发现目录”，选择要处理的目录。
 4. 选择每次处理数量。日常使用建议保留默认 2000；想先验证结果可选 100 或 500；需要完整处理当前范围可选“全部”。
@@ -88,7 +97,7 @@ Manifest 行为：
 
 | 组件 | 技术 |
 |------|------|
-| 开发语言 | Kotlin 2.3.21 |
+| 开发语言 | Kotlin 2.4.0 |
 | UI 框架 | Jetpack Compose + Material 3 |
 | 架构 | MVVM + Clean Architecture |
 | 依赖注入 | Hilt 2.60 |
@@ -97,8 +106,8 @@ Manifest 行为：
 | 导航 | Navigation Compose 2.9.8 |
 | 本地 ML | ML Kit Image Labeling 17.0.9 |
 | 偏好设置 | DataStore Preferences 1.2.1 |
-| 最低 SDK | 26 |
-| 目标 SDK | 36 |
+| 最低 SDK | 30 |
+| 目标 SDK | 37 |
 | 编译 SDK | 37 |
 
 ## 构建说明

@@ -19,11 +19,20 @@
 
 PhotoCleaner is an Android photo cleanup assistant focused on local, on-device analysis. It scans selected folders, detects obvious low-quality or low-value photos, groups visually similar shots, and gives you a review screen before anything is removed.
 
-Version 1.9.0 is a code-quality, standards, and build-size pass on top of the 1.8.0 scanning work: the whole stack was reviewed against current Android 14+ requirements, a rendering bug in the statistics pie chart was fixed, scan classification now runs in parallel, and the release build strips unused resources and locales.
+Version 1.10.0 modernizes the app around Android 11+ system trash, observable media permissions, adaptive navigation, accessibility, reduced-motion support, and the latest stable Kotlin/Compose/Hilt toolchain.
 
-The app remains fully offline. It does not store API keys, does not include Retrofit/OkHttp/Moshi networking code, and explicitly removes the `INTERNET` permission from the merged manifest.
+The app remains fully offline. It does not store API keys, does not include Retrofit/OkHttp/Moshi networking code, and does not declare the `INTERNET` permission.
 
-## What's New in v1.9.0
+## What's New in v1.10.0
+
+- Raised the supported platform to Android 11+ and target SDK 37 so every cleanup uses the system trash confirmation flow; removed unsafe legacy direct-delete and private-restore branches.
+- Made media access observable across permission results and Activity resume, keeping Scan and Settings permission status current.
+- Added Material 3 Adaptive Navigation Suite and adaptive review-grid columns for phones, tablets, landscape, and foldables.
+- Added TalkBack descriptions and custom keep/delete accessibility actions, and respected the system animator duration setting.
+- Updated Kotlin 2.4.0, KSP 2.3.10, Compose BOM 2026.06.01, Hilt 2.60.1, Hilt Navigation Compose 1.4.0, and Turbine 1.2.1.
+- Added regression tests for system-trash confirmation, cancellation, and request failure; verified unit tests, Lint, Debug build, and R8 Release build.
+
+## Earlier: v1.9.0
 
 - Fixed the statistics pie chart rendering every slice gray; slices are now colored by classification.
 - Made file-size formatting locale-independent (`Locale.US`) so values render consistently and unit tests stay stable.
@@ -69,13 +78,13 @@ Relevant manifest behavior:
 - Uses `READ_MEDIA_IMAGES` on Android 13+.
 - Uses `READ_MEDIA_VISUAL_USER_SELECTED` on Android 14+ for partial-library access.
 - Uses `READ_EXTERNAL_STORAGE` up to Android 12.
-- Explicitly removes `INTERNET` and other unrelated permissions that dependencies might try to merge.
+- Declares no network or unrelated sensitive permissions.
 
 If Android grants only partial photo access, the app can only discover and scan the photos selected through the system permission UI. The scan and settings screens show this status and provide a reauthorization button.
 
 ## How to Use
 
-1. Install the APK on an Android 8.0+ device.
+1. Install the APK on an Android 11+ device.
 2. Grant photo/media access when prompted.
 3. Open Scan, tap "Discover directories", and choose the folders to include.
 4. Choose a batch size. Keep the default 2000 for normal use, use a smaller batch to validate results, or choose "All" for a full pass.
@@ -89,7 +98,7 @@ If Android grants only partial photo access, the app can only discover and scan 
 
 | Component | Technology |
 |-----------|------------|
-| Language | Kotlin 2.3.21 |
+| Language | Kotlin 2.4.0 |
 | UI Framework | Jetpack Compose + Material 3 |
 | Architecture | MVVM + Clean Architecture |
 | DI | Hilt 2.60 |
@@ -98,8 +107,8 @@ If Android grants only partial photo access, the app can only discover and scan 
 | Navigation | Navigation Compose 2.9.8 |
 | Local ML | ML Kit Image Labeling 17.0.9 |
 | Preferences | DataStore Preferences 1.2.1 |
-| Min SDK | 26 |
-| Target SDK | 36 |
+| Min SDK | 30 |
+| Target SDK | 37 |
 | Compile SDK | 37 |
 
 ## Build

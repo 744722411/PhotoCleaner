@@ -7,7 +7,6 @@ import android.database.Cursor
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
-import android.os.Environment
 import android.provider.MediaStore
 import com.photocleaner.data.local.PhotoDao
 import com.photocleaner.data.mapper.PhotoMapper
@@ -22,7 +21,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
-import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -30,7 +28,7 @@ import javax.inject.Singleton
 class PhotoRepositoryImpl @Inject constructor(
     private val photoDao: PhotoDao,
     private val mapper: PhotoMapper,
-    @ApplicationContext private val context: Context
+    @param:ApplicationContext private val context: Context
 ) : PhotoRepository {
 
     override fun getAllPhotos(): Flow<List<Photo>> =
@@ -73,16 +71,7 @@ class PhotoRepositoryImpl @Inject constructor(
             val sizeCol = cursor.getColumnIndex(MediaStore.Images.Media.SIZE)
             val dateAddedCol = cursor.getColumnIndex(MediaStore.Images.Media.DATE_ADDED)
             val dateModCol = cursor.getColumnIndex(MediaStore.Images.Media.DATE_MODIFIED)
-            val relPathCol = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                cursor.getColumnIndex(MediaStore.Images.Media.RELATIVE_PATH)
-            } else {
-                -1
-            }
-            val dataCol = if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
-                cursor.getColumnIndex(MediaStore.Images.Media.DATA)
-            } else {
-                -1
-            }
+            val relPathCol = cursor.getColumnIndex(MediaStore.Images.Media.RELATIVE_PATH)
 
             if (idCol < 0 || nameCol < 0 || mimeCol < 0 || widthCol < 0 || heightCol < 0 || sizeCol < 0 || dateAddedCol < 0 || dateModCol < 0) {
                 return@use
@@ -93,12 +82,9 @@ class PhotoRepositoryImpl @Inject constructor(
             while (cursor.moveToNext()) {
                 if (useDirectoryFilter) {
                     val relativePath = if (relPathCol >= 0) cursor.getString(relPathCol).orEmpty().normalizedDirectory() else ""
-                    val fullPath = if (dataCol >= 0) cursor.getString(dataCol).orEmpty().normalizedDirectory() else ""
                     val matchesAny = normalizedSelectedDirectories.any { dir ->
                         relativePath == dir ||
-                        relativePath.startsWith("$dir/", ignoreCase = true) ||
-                        fullPath.contains("/$dir/", ignoreCase = true) ||
-                        fullPath.endsWith("/$dir", ignoreCase = true)
+                        relativePath.startsWith("$dir/", ignoreCase = true)
                     }
                     if (!matchesAny) continue
                 }
@@ -119,7 +105,7 @@ class PhotoRepositoryImpl @Inject constructor(
                         size = cursor.getLong(sizeCol),
                         dateAdded = cursor.getLong(dateAddedCol),
                         dateModified = cursor.getLong(dateModCol),
-                        filePath = if (dataCol >= 0) cursor.getString(dataCol) ?: "" else ""
+                        filePath = ""
                     )
                 )
             }
@@ -150,16 +136,7 @@ class PhotoRepositoryImpl @Inject constructor(
         ) + mediaPathProjection()
 
         queryImages(projection, null)?.use { cursor ->
-            val relPathCol = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                cursor.getColumnIndex(MediaStore.Images.Media.RELATIVE_PATH)
-            } else {
-                -1
-            }
-            val dataCol = if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
-                cursor.getColumnIndex(MediaStore.Images.Media.DATA)
-            } else {
-                -1
-            }
+            val relPathCol = cursor.getColumnIndex(MediaStore.Images.Media.RELATIVE_PATH)
             val sizeCol = cursor.getColumnIndex(MediaStore.Images.Media.SIZE)
             val widthCol = cursor.getColumnIndex(MediaStore.Images.Media.WIDTH)
             val heightCol = cursor.getColumnIndex(MediaStore.Images.Media.HEIGHT)
@@ -174,18 +151,8 @@ class PhotoRepositoryImpl @Inject constructor(
                 if (width < MIN_DIMENSION || height < MIN_DIMENSION) continue
 
                 val relativePath = if (relPathCol >= 0) cursor.getString(relPathCol) else null
-                val fullPath = if (dataCol >= 0) cursor.getString(dataCol) else null
-
                 val dir = when {
                     !relativePath.isNullOrBlank() -> relativePath.trim('/')
-                    !fullPath.isNullOrBlank() -> {
-                        val parentPath = File(fullPath).parent ?: ""
-                        if (parentPath.isNotBlank()) {
-                            parentPath.substringAfter("emulated/0/")
-                                .substringAfter("storage/emulated/0/")
-                                .trim('/')
-                        } else ""
-                    }
                     else -> continue
                 }
                 if (dir.isBlank()) continue
@@ -219,64 +186,8 @@ class PhotoRepositoryImpl @Inject constructor(
     }
 
     override suspend fun deletePhotos(photos: List<Photo>) {
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
-            val ids = photos.map { it.id }
-            if (ids.isNotEmpty()) photoDao.setTrashStatus(ids, true)
-            return
-        }
-
-        val trashDir = File(context.getExternalFilesDir(Environment.DIRECTORY_PICTURES), "trash")
-        if (!trashDir.exists()) trashDir.mkdirs()
-
-        val ids = mutableListOf<Long>()
-        photos.forEach { photo ->
-            try {
-                val uri = Uri.parse(photo.uri)
-                val inputStream = context.contentResolver.openInputStream(uri)
-                if (inputStream != null) {
-                    val trashFile = File(trashDir, "${photo.id}_${photo.displayName}")
-                    inputStream.use { input ->
-                        trashFile.outputStream().use { output -> input.copyTo(output) }
-                    }
-                    val deleted = context.contentResolver.delete(uri, null, null)
-                    if (deleted > 0) {
-                        ids.add(photo.id)
-                    } else {
-                        trashFile.delete()
-                    }
-                }
-            } catch (e: Exception) {
-                android.util.Log.e("PhotoRepositoryImpl", "Failed to delete photo: ${photo.displayName}", e)
-            }
-        }
+        val ids = photos.map { it.id }
         if (ids.isNotEmpty()) photoDao.setTrashStatus(ids, true)
-    }
-
-    override suspend fun restorePhotos(photos: List<Photo>) {
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
-            val ids = photos.map { it.id }
-            if (ids.isNotEmpty()) photoDao.setTrashStatus(ids, false)
-            return
-        }
-
-        val trashDir = File(context.getExternalFilesDir(Environment.DIRECTORY_PICTURES), "trash")
-        val ids = mutableListOf<Long>()
-        photos.forEach { photo ->
-            try {
-                val trashFile = File(trashDir, "${photo.id}_${photo.displayName}")
-                if (trashFile.exists() && photo.filePath.isNotBlank()) {
-                    val originalFile = File(photo.filePath)
-                    originalFile.parentFile?.mkdirs()
-                    trashFile.copyTo(originalFile, overwrite = true)
-                    android.media.MediaScannerConnection.scanFile(context, arrayOf(photo.filePath), null, null)
-                    ids.add(photo.id)
-                    trashFile.delete()
-                }
-            } catch (e: Exception) {
-                android.util.Log.e("PhotoRepositoryImpl", "Failed to restore photo: ${photo.displayName}", e)
-            }
-        }
-        if (ids.isNotEmpty()) photoDao.setTrashStatus(ids, false)
     }
 
     override suspend fun getPhotoById(id: Long): Photo? = photoDao.getPhotoById(id)?.let { mapper.toDomain(it) }
@@ -298,11 +209,7 @@ class PhotoRepositoryImpl @Inject constructor(
     override suspend fun clearAll() = photoDao.clearAll()
 
     private fun mediaPathProjection(): Array<String> =
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            arrayOf(MediaStore.Images.Media.RELATIVE_PATH)
-        } else {
-            arrayOf(MediaStore.Images.Media.DATA)
-        }
+        arrayOf(MediaStore.Images.Media.RELATIVE_PATH)
 
     private fun String.normalizedDirectory(): String =
         replace('\\', '/')

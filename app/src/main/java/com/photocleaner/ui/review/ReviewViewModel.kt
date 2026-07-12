@@ -186,24 +186,13 @@ class ReviewViewModel @Inject constructor(
         if (photos.isEmpty()) return
         deleteJob?.cancel()
         viewModelScope.launch {
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
-                val pendingIntent = trashService.createTrashPendingIntent(photos)
-                if (pendingIntent != null) {
-                    _uiState.update { it.copy(showUndo = false) }
-                    _event.emit(ReviewEvent.LaunchTrashIntent(pendingIntent))
-                } else {
-                    _uiState.update { it.copy(error = "无法创建系统回收站请求") }
-                    clearPendingDeletes(photos.size)
-                }
+            val pendingIntent = trashService.createTrashPendingIntent(photos)
+            if (pendingIntent != null) {
+                _uiState.update { it.copy(showUndo = false) }
+                _event.emit(ReviewEvent.LaunchTrashIntent(pendingIntent))
             } else {
-                try {
-                    deletePhotosUseCase(photos)
-                    clearPendingDeletes(photos.size)
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    _uiState.update { it.copy(error = e.message ?: "删除失败") }
-                }
+                _uiState.update { it.copy(error = "无法创建系统回收站请求") }
+                clearPendingDeletes(photos.size)
             }
         }
     }

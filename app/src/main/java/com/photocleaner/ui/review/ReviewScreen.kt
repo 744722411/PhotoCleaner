@@ -201,7 +201,7 @@ fun ReviewScreen(
 
                         isGridView -> {
                             LazyVerticalGrid(
-                                columns = GridCells.Fixed(2),
+                                columns = GridCells.Adaptive(minSize = 170.dp),
                                 contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -337,24 +337,36 @@ private fun ReviewHeader(
                 IconButton(onClick = onToggleView) {
                     Icon(
                         imageVector = if (isGridView) Icons.Default.Style else Icons.Default.GridView,
-                        contentDescription = null,
+                        contentDescription = stringResource(
+                            if (isGridView) R.string.review_list_view else R.string.review_grid_view
+                        ),
                         tint = Color.White
                     )
                 }
             }
             if (uiState.isBatchMode && uiState.filter != FilterType.SIMILAR) {
                 IconButton(onClick = onSelectAll) {
-                    Icon(Icons.Default.SelectAll, contentDescription = null, tint = BlueAccent)
+                    Icon(
+                        Icons.Default.SelectAll,
+                        contentDescription = stringResource(R.string.review_select_all),
+                        tint = BlueAccent
+                    )
                 }
                 IconButton(onClick = onDeselectAll) {
-                    Icon(Icons.Default.ClearAll, contentDescription = null, tint = Color.White)
+                    Icon(
+                        Icons.Default.ClearAll,
+                        contentDescription = stringResource(R.string.review_deselect_all),
+                        tint = Color.White
+                    )
                 }
             }
             if (uiState.filter != FilterType.SIMILAR) {
                 IconButton(onClick = onToggleBatchMode) {
                     Icon(
                         imageVector = if (uiState.isBatchMode) Icons.Default.Close else Icons.Default.Checklist,
-                        contentDescription = null,
+                        contentDescription = stringResource(
+                            if (uiState.isBatchMode) R.string.review_exit_batch else R.string.review_enter_batch
+                        ),
                         tint = if (uiState.isBatchMode) RedAccent else Color.White
                     )
                 }

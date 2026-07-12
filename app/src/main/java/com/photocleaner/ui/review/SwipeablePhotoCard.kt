@@ -20,6 +20,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -48,7 +51,7 @@ fun SwipeablePhotoCard(
     val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     val coroutineScope = rememberCoroutineScope()
 
-    var dragOffset by remember(photo.id) { mutableStateOf(0f) }
+    var dragOffset by remember(photo.id) { mutableFloatStateOf(0f) }
     val animOffset = remember { Animatable(0f) }
 
     BoxWithConstraints(
@@ -119,6 +122,12 @@ fun SwipeablePhotoCard(
                             hasHapticTriggeredLeft = false
                         }
                     }
+                )
+            }
+            .semantics {
+                customActions = listOf(
+                    CustomAccessibilityAction("保留照片") { onSwipedRight(); true },
+                    CustomAccessibilityAction("删除照片") { onSwipedLeft(); true }
                 )
             }
             .clip(RoundedCornerShape(24.dp))

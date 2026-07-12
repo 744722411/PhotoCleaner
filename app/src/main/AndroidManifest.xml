@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <!-- 读取图片（Android 13+） -->
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
@@ -9,34 +8,11 @@
     <!-- 读取外部存储（Android 12 及以下兼容） -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
         android:maxSdkVersion="32" />
-    <!-- Android 9 及以下删除共享照片需要写入外部存储权限 -->
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
-        android:maxSdkVersion="28" />
-
-    <!-- 显式移除依赖库可能注入的多余权限 -->
-    <uses-permission android:name="android.permission.SEND_SMS" tools:node="remove" />
-    <uses-permission android:name="android.permission.READ_SMS" tools:node="remove" />
-    <uses-permission android:name="android.permission.RECEIVE_SMS" tools:node="remove" />
-    <uses-permission android:name="android.permission.READ_PHONE_STATE" tools:node="remove" />
-    <uses-permission android:name="android.permission.CALL_PHONE" tools:node="remove" />
-    <uses-permission android:name="android.permission.READ_CONTACTS" tools:node="remove" />
-    <uses-permission android:name="android.permission.WRITE_CONTACTS" tools:node="remove" />
-    <uses-permission android:name="android.permission.CAMERA" tools:node="remove" />
-    <uses-permission android:name="android.permission.RECORD_AUDIO" tools:node="remove" />
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" tools:node="remove" />
-    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" tools:node="remove" />
-    <uses-permission android:name="android.permission.INTERNET" tools:node="remove" />
-    <uses-permission android:name="android.permission.BLUETOOTH" tools:node="remove" />
-    <uses-permission android:name="android.permission.VIBRATE" tools:node="remove" />
-    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" tools:node="remove" />
-    <uses-permission android:name="android.permission.WRITE_SETTINGS" tools:node="remove" />
-
     <application
         android:name=".PhotoCleanerApp"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
-        android:enableOnBackInvokedCallback="true"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:label="@string/app_name"

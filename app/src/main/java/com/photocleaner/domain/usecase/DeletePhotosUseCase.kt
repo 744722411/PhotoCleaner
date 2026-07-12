@@ -12,8 +12,4 @@ class DeletePhotosUseCase @Inject constructor(
     suspend operator fun invoke(photos: List<Photo>): Unit = withContext(Dispatchers.IO) {
         repository.deletePhotos(photos)
     }
-
-    suspend fun restore(photos: List<Photo>): Unit = withContext(Dispatchers.IO) {
-        repository.restorePhotos(photos)
-    }
 }

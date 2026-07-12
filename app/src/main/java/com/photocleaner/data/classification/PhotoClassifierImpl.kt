@@ -20,7 +20,7 @@ import kotlinx.coroutines.tasks.await
 
 @Singleton
 class PhotoClassifierImpl @Inject constructor(
-    @ApplicationContext private val context: Context
+    @param:ApplicationContext private val context: Context
 ) : PhotoClassifier {
 
     private val labeler by lazy { ImageLabeling.getClient(ImageLabelerOptions.DEFAULT_OPTIONS) }

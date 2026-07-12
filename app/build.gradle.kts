@@ -14,10 +14,10 @@ android {
 
     defaultConfig {
         applicationId = "com.photocleaner"
-        minSdk = 26
-        targetSdk = 36
-        versionCode = 19
-        versionName = "1.9.0"
+        minSdk = 30
+        targetSdk = 37
+        versionCode = 20
+        versionName = "1.10.0"
         testInstrumentationRunner = "dagger.hilt.android.testing.HiltTestRunner"
     }
 
@@ -99,6 +99,7 @@ dependencies {
     // Navigation (type-safe routes) — requires kotlin-serialization plugin + json runtime
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.hilt.navigation.compose)
+    implementation(libs.androidx.material3.adaptive.navigation.suite)
     implementation(libs.kotlinx.serialization.json)
 
     // Hilt

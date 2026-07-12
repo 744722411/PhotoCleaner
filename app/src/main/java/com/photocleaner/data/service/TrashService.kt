@@ -20,11 +20,10 @@ interface TrashService {
 
 @Singleton
 class MediaStoreTrashService @Inject constructor(
-    @ApplicationContext private val context: Context
+    @param:ApplicationContext private val context: Context
 ) : TrashService {
 
     override suspend fun createTrashPendingIntent(photos: List<Photo>): PendingIntent? {
-        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.R) return null
         val uris = photos.map { Uri.parse(it.uri) }
         return try {
             MediaStore.createTrashRequest(context.contentResolver, uris, true)
