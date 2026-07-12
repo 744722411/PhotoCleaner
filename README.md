@@ -1,6 +1,8 @@
 # PhotoCleaner - Local Photo Cleanup Assistant
 
 > Chinese documentation: [README_CN.md](README_CN.md)
+>
+> Next iteration product design (Chinese): [PRODUCT_DESIGN_NEXT.md](PRODUCT_DESIGN_NEXT.md)
 
 ---
 

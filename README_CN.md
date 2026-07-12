@@ -1,6 +1,8 @@
 # PhotoCleaner - 本地照片清理助手
 
 > English documentation: [README.md](README.md)
+>
+> 下一版本开发设计：[PRODUCT_DESIGN_NEXT.md](PRODUCT_DESIGN_NEXT.md)
 
 ---
 
