@@ -19,18 +19,18 @@
 
 PhotoCleaner is an Android photo cleanup assistant focused on local, on-device analysis. It scans selected folders, detects obvious low-quality or low-value photos, groups visually similar shots, and gives you a review screen before anything is removed.
 
-Version 1.10.0 modernizes the app around Android 11+ system trash, observable media permissions, adaptive navigation, accessibility, reduced-motion support, and the latest stable Kotlin/Compose/Hilt toolchain.
+Version 2026.07.12 targets Android 16 with verified permanent-delete state, scoped directory queries, adaptive navigation, accessibility, and foreground scanning.
 
 The app remains fully offline. It does not store API keys, does not include Retrofit/OkHttp/Moshi networking code, and does not declare the `INTERNET` permission.
 
-## What's New in v1.10.0
+## What's New in 2026.07.12
 
-- Raised the supported platform to Android 11+ and target SDK 37 so every cleanup uses the system trash confirmation flow; removed unsafe legacy direct-delete and private-restore branches.
+- Raised the supported platform to Android 11+ and target SDK 37 so every cleanup uses the system permanent-delete confirmation flow; removed unsafe legacy direct-delete and private-restore branches.
 - Made media access observable across permission results and Activity resume, keeping Scan and Settings permission status current.
 - Added Material 3 Adaptive Navigation Suite and adaptive review-grid columns for phones, tablets, landscape, and foldables.
 - Added TalkBack descriptions and custom keep/delete accessibility actions, and respected the system animator duration setting.
 - Updated Kotlin 2.4.0, KSP 2.3.10, Compose BOM 2026.06.01, Hilt 2.60.1, Hilt Navigation Compose 1.4.0, and Turbine 1.2.1.
-- Added regression tests for system-trash confirmation, cancellation, and request failure; verified unit tests, Lint, Debug build, and R8 Release build.
+- Added regression tests for system permanent-delete confirmation, cancellation, and request failure; verified unit tests, Lint, Debug build, and R8 Release build.
 
 ## Earlier: v1.9.0
 
@@ -40,7 +40,7 @@ The app remains fully offline. It does not store API keys, does not include Retr
 - Migrated `fallbackToDestructiveMigrationOnDowngrade` to the current non-deprecated Room API.
 - Enabled R8 full mode and resource/locale shrinking (Chinese-only), reducing release APK size.
 - Removed dead code (unused DAO query) and clarified the redundant v3→v4 database migration.
-- Verified Android 14+ compliance: scoped media permissions, partial photo access, and system-trash deletion.
+- Verified Android 14+ compliance: scoped media permissions, partial photo access, and system permanent deletion.
 
 ## Earlier: v1.8.0
 
@@ -66,7 +66,7 @@ The app remains fully offline. It does not store API keys, does not include Retr
 - Review screen with grid and swipe workflows.
 - Batch selection and confirmation before cleanup.
 - Undo window before pending deletes are submitted.
-- Android 11+ system trash integration via `MediaStore.createTrashRequest`.
+- Android 11+ permanent deletion via `MediaStore.createDeleteRequest`, followed by per-URI verification.
 - Material 3 dark UI with progress logs and offline privacy status.
 
 ## Permissions and Privacy
@@ -92,7 +92,7 @@ If Android grants only partial photo access, the app can only discover and scan 
 6. Use Pause if you want to temporarily hold the current scan and continue later.
 7. Use Stop if you want to cancel the current scan. Already completed results remain available on the Review screen.
 8. Open Review to inspect suggested cleanup, uncertain items, similar groups, or all photos.
-9. Confirm deletes carefully. You can undo before final submission to the system trash flow.
+9. Confirm deletes carefully; the system permanent-delete authorization screen opens immediately and the operation cannot be undone.
 
 ## Technical Details
 
@@ -143,7 +143,7 @@ app/src/main/
 │   │   ├── local/             # Room DAO, entities, database
 │   │   ├── mapper/            # Entity/domain mapping
 │   │   ├── repository/        # Repository implementations
-│   │   └── service/           # Trash integration
+│   │   └── service/           # System permanent-delete integration
 │   ├── di/                    # Hilt modules
 │   ├── domain/
 │   │   ├── model/             # Photo, Classification, DirectoryInfo

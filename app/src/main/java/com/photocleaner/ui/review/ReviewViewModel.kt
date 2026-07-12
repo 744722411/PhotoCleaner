@@ -12,7 +12,6 @@ import com.photocleaner.util.ImageUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -43,9 +42,7 @@ data class ReviewUiState(
     val filter: FilterType = FilterType.USELESS,
     val isBatchMode: Boolean = false,
     val isLoading: Boolean = false,
-    val deletedCount: Int = 0,
-    val showUndo: Boolean = false,
-    val lastDeletedPhotos: List<Photo> = emptyList(),
+    val isDeleteRequestInFlight: Boolean = false,
     val detailPhoto: Photo? = null,
     val error: String? = null
 )
@@ -66,7 +63,6 @@ class ReviewViewModel @Inject constructor(
     val event = _event
 
     private val pendingDeletePhotosList = mutableListOf<Photo>()
-    private var deleteJob: Job? = null
 
     init { loadPhotos() }
 
@@ -132,11 +128,13 @@ class ReviewViewModel @Inject constructor(
     fun deleteSelected() {
         val selected = _uiState.value.selectedPhotos
         if (selected.isEmpty()) return
-        deletePhotos(_uiState.value.photos.filter { it.id in selected })
+        requestDelete(_uiState.value.photos.filter { it.id in selected })
         _uiState.update { it.copy(isBatchMode = false, selectedPhotos = emptySet()) }
     }
 
-    fun deletePhoto(photo: Photo) = deletePhotos(listOf(photo))
+    fun deletePhoto(photo: Photo) = requestDelete(listOf(photo))
+
+    fun deletePhotos(photos: List<Photo>) = requestDelete(photos)
 
     fun keepBestInGroup(group: List<Photo>) {
         if (group.size <= 1) return
@@ -150,49 +148,28 @@ class ReviewViewModel @Inject constructor(
             if (p1.size != p2.size) return@minWithOrNull p2.size.compareTo(p1.size)
             p1.dateAdded.compareTo(p2.dateAdded)
         } ?: group.first()
-        deletePhotos(group.filter { it.id != bestPhoto.id })
+        requestDelete(group.filter { it.id != bestPhoto.id })
     }
 
-    private fun deletePhotos(photos: List<Photo>) {
-        if (photos.isEmpty()) return
-        deleteJob?.cancel()
-
+    private fun requestDelete(photos: List<Photo>) {
+        if (photos.isEmpty() || _uiState.value.isDeleteRequestInFlight) return
         val existingIds = pendingDeletePhotosList.mapTo(mutableSetOf()) { it.id }
         photos.forEach { photo -> if (existingIds.add(photo.id)) pendingDeletePhotosList.add(photo) }
         _pendingDeleteIds.value = existingIds
-
-        _uiState.update { state ->
-            state.copy(
-                deletedCount = pendingDeletePhotosList.size,
-                showUndo = true,
-                lastDeletedPhotos = pendingDeletePhotosList.toList()
-            )
-        }
-
-        deleteJob = viewModelScope.launch {
-            kotlinx.coroutines.delay(5000)
-            _uiState.update { it.copy(showUndo = false) }
-        }
-    }
-
-    fun undoDelete() {
-        deleteJob?.cancel()
-        if (_uiState.value.lastDeletedPhotos.isEmpty()) return
-        clearPendingDeletes()
+        _uiState.update { it.copy(isDeleteRequestInFlight = true) }
+        commitPendingDeletes()
     }
 
     fun commitPendingDeletes() {
         val photos = pendingDeletePhotosList.toList()
         if (photos.isEmpty()) return
-        deleteJob?.cancel()
         viewModelScope.launch {
-            val pendingIntent = trashService.createTrashPendingIntent(photos)
+            val pendingIntent = trashService.createDeletePendingIntent(photos)
             if (pendingIntent != null) {
-                _uiState.update { it.copy(showUndo = false) }
                 _event.emit(ReviewEvent.LaunchTrashIntent(pendingIntent))
             } else {
-                _uiState.update { it.copy(error = "无法创建系统回收站请求") }
-                clearPendingDeletes(photos.size)
+                _uiState.update { it.copy(error = "无法创建系统永久删除请求") }
+                clearPendingDeletes()
             }
         }
     }
@@ -202,11 +179,18 @@ class ReviewViewModel @Inject constructor(
         if (photos.isEmpty()) return
         viewModelScope.launch {
             try {
-                deletePhotosUseCase(photos)
-                clearPendingDeletes(photos.size)
+                val deletedIds = repository.findDeletedPhotoIds(photos)
+                val deletedPhotos = photos.filter { it.id in deletedIds }
+                if (deletedPhotos.isNotEmpty()) deletePhotosUseCase(deletedPhotos)
+                clearPendingDeletes()
+                val failedCount = photos.size - deletedPhotos.size
+                if (failedCount > 0) {
+                    _uiState.update { it.copy(error = "$failedCount 张照片未能永久删除，请重试") }
+                }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
+                clearPendingDeletes()
                 _uiState.update { it.copy(error = e.message ?: "删除状态更新失败") }
             }
         }
@@ -216,10 +200,10 @@ class ReviewViewModel @Inject constructor(
         clearPendingDeletes()
     }
 
-    private fun clearPendingDeletes(deletedCountDelta: Int = pendingDeletePhotosList.size) {
+    private fun clearPendingDeletes() {
         pendingDeletePhotosList.clear()
         _pendingDeleteIds.value = emptySet()
-        _uiState.update { state -> state.copy(showUndo = false, lastDeletedPhotos = emptyList(), deletedCount = maxOf(0, state.deletedCount - deletedCountDelta)) }
+        _uiState.update { it.copy(isDeleteRequestInFlight = false) }
     }
 
     fun clearError() { _uiState.update { it.copy(error = null) } }

@@ -5,7 +5,6 @@ import android.content.ContentUris
 import android.content.Context
 import android.database.Cursor
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
 import com.photocleaner.data.local.PhotoDao
@@ -18,6 +17,7 @@ import com.photocleaner.util.MediaAccessLevel
 import com.photocleaner.util.PermissionHelper
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
@@ -63,10 +63,9 @@ class PhotoRepositoryImpl @Inject constructor(
             MediaStore.Images.Media.DATE_MODIFIED
         ) + mediaPathProjection()
 
-        val useDirectoryFilter = selectedDirectories.isNotEmpty()
         val sortOrder = "${MediaStore.Images.Media.DATE_ADDED} DESC"
 
-        queryImages(projection, sortOrder)?.use { cursor ->
+        queryImages(projection, sortOrder, selectedDirectories).forEach { cursor -> cursor.use {
             val idCol = cursor.getColumnIndex(MediaStore.Images.Media._ID)
             val nameCol = cursor.getColumnIndex(MediaStore.Images.Media.DISPLAY_NAME)
             val mimeCol = cursor.getColumnIndex(MediaStore.Images.Media.MIME_TYPE)
@@ -76,58 +75,19 @@ class PhotoRepositoryImpl @Inject constructor(
             val dateAddedCol = cursor.getColumnIndex(MediaStore.Images.Media.DATE_ADDED)
             val dateModCol = cursor.getColumnIndex(MediaStore.Images.Media.DATE_MODIFIED)
             val relPathCol = cursor.getColumnIndex(MediaStore.Images.Media.RELATIVE_PATH)
-            val dataCol = cursor.getColumnIndex(MediaStore.Images.Media.DATA)
 
             if (idCol < 0 || nameCol < 0 || mimeCol < 0 || widthCol < 0 || heightCol < 0 || sizeCol < 0 || dateAddedCol < 0 || dateModCol < 0) {
                 return@use
             }
 
-            val normalizedSelectedDirectories = selectedDirectories
-                .map { it.normalizedDirectory() }
-                .filterTo(mutableSetOf()) { 
-                    it.isNotEmpty() && 
-                    it != "0" && 
-                    it != "emulated" && 
-                    it != "storage" && 
-                    it != "emulated/0" 
-                }
-
             while (cursor.moveToNext()) {
-                if (useDirectoryFilter) {
-                    val relativePath = if (relPathCol >= 0) cursor.getString(relPathCol).orEmpty().normalizedDirectory() else ""
-                    
-                    // Extract relative path from absolute path (fullPath) if available
-                    val fullPath = if (dataCol >= 0) cursor.getString(dataCol).orEmpty().replace('\\', '/') else ""
-                    val extractedRelPath = if (fullPath.isNotEmpty()) {
-                        // Strips absolute storage prefixes to get a pure relative path like "DCIM/Camera/IMG.jpg"
-                        val cleanPath = fullPath
-                            .substringAfter("storage/emulated/0/")
-                            .substringAfter("sdcard/")
-                            .trim('/')
-                        
-                        // Strip the filename to get the directory part only
-                        if (cleanPath.contains('/')) {
-                            cleanPath.substringBeforeLast('/')
-                        } else {
-                            ""
-                        }
-                    } else {
-                        ""
-                    }
-                    
-                    val matchesAny = normalizedSelectedDirectories.any { dir ->
-                        // Match relative path
-                        (relativePath.isNotEmpty() && (relativePath == dir || relativePath.startsWith("$dir/", ignoreCase = true))) ||
-                        // Match extracted path from physical path
-                        (extractedRelPath.isNotEmpty() && (extractedRelPath == dir || extractedRelPath.startsWith("$dir/", ignoreCase = true)))
-                    }
-                    if (!matchesAny) continue
-                }
-
-                val id = cursor.getLong(idCol)
+                val mediaStoreId = cursor.getLong(idCol)
+                val volumeName = cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.VOLUME_NAME))
                 val uri = ContentUris.withAppendedId(
-                    MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id
+                    MediaStore.Images.Media.getContentUri(volumeName), mediaStoreId
                 ).toString()
+                // Preserve existing primary-volume IDs while giving removable volumes a separate key space.
+                val id = if (volumeName == MediaStore.VOLUME_EXTERNAL_PRIMARY) mediaStoreId else stableVolumeId(uri)
 
                 val relativePath = if (relPathCol >= 0) cursor.getString(relPathCol).orEmpty().normalizedDirectory() else ""
 
@@ -146,7 +106,7 @@ class PhotoRepositoryImpl @Inject constructor(
                     )
                 )
             }
-        }
+        } }
         photos
     }
 
@@ -154,6 +114,8 @@ class PhotoRepositoryImpl @Inject constructor(
         private const val MIN_IMAGE_COUNT = 1
         private const val MIN_FILE_SIZE = 10 * 1024L
         private const val MIN_DIMENSION = 100
+        private const val DELETE_VERIFY_ATTEMPTS = 6
+        private const val DELETE_VERIFY_DELAY_MS = 250L
         private val EXCLUDED_DIR_PATTERNS = listOf(
             "drawable", "assets", "res", "mipmap",
             "emoji", "sticker", "emoticon",
@@ -172,7 +134,7 @@ class PhotoRepositoryImpl @Inject constructor(
             MediaStore.Images.Media.HEIGHT
         ) + mediaPathProjection()
 
-        queryImages(projection, null)?.use { cursor ->
+        queryImages(projection, null, emptySet()).forEach { cursor -> cursor.use {
             val relPathCol = cursor.getColumnIndex(MediaStore.Images.Media.RELATIVE_PATH)
             val sizeCol = cursor.getColumnIndex(MediaStore.Images.Media.SIZE)
             val widthCol = cursor.getColumnIndex(MediaStore.Images.Media.WIDTH)
@@ -204,7 +166,7 @@ class PhotoRepositoryImpl @Inject constructor(
 
                 dirCounts[dir] = (dirCounts[dir] ?: 0) + 1
             }
-        }
+        } }
 
         dirCounts.filter { it.value >= MIN_IMAGE_COUNT }
             .map { (path, count) ->
@@ -230,6 +192,36 @@ class PhotoRepositoryImpl @Inject constructor(
             }
         }
     }
+
+    override suspend fun findDeletedPhotoIds(photos: List<Photo>): List<Long> = withContext(Dispatchers.IO) {
+        val remaining = photos.toMutableList()
+        val deletedIds = mutableListOf<Long>()
+        repeat(DELETE_VERIFY_ATTEMPTS) { attempt ->
+            val iterator = remaining.iterator()
+            while (iterator.hasNext()) {
+                val photo = iterator.next()
+                val isDeleted = runCatching {
+                    context.contentResolver.query(
+                        Uri.parse(photo.uri),
+                        arrayOf(MediaStore.MediaColumns._ID),
+                        null,
+                        null,
+                        null
+                    )?.use { !it.moveToFirst() } ?: true
+                }.getOrDefault(false)
+                if (isDeleted) {
+                    deletedIds += photo.id
+                    iterator.remove()
+                }
+            }
+            if (remaining.isEmpty()) return@withContext deletedIds
+            if (attempt < DELETE_VERIFY_ATTEMPTS - 1) delay(DELETE_VERIFY_DELAY_MS)
+        }
+        deletedIds
+    }
+
+    override fun hasFullMediaAccess(): Boolean =
+        PermissionHelper.getMediaAccessLevel(context) == MediaAccessLevel.FULL
 
     override suspend fun getPhotoById(id: Long): Photo? = photoDao.getPhotoById(id)?.let { mapper.toDomain(it) }
 
@@ -260,53 +252,51 @@ class PhotoRepositoryImpl @Inject constructor(
     override suspend fun clearAll() = photoDao.clearAll()
 
     private fun mediaPathProjection(): Array<String> =
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            arrayOf(
-                MediaStore.Images.Media.RELATIVE_PATH,
-                MediaStore.Images.Media.DATA
-            )
-        } else {
-            arrayOf(MediaStore.Images.Media.DATA)
-        }
+        arrayOf(MediaStore.Images.Media.RELATIVE_PATH)
 
     private fun String.normalizedDirectory(): String =
         replace('\\', '/')
             .trim()
             .trim('/')
 
+    private fun stableVolumeId(uri: String): Long {
+        var hash = -0x340d631b7bdddcdbL
+        uri.forEach { character ->
+            hash = (hash xor character.code.toLong()) * 0x100000001b3L
+        }
+        return hash or Long.MIN_VALUE
+    }
+
     private fun queryImages(
         projection: Array<String>,
-        sortOrder: String?
-    ): Cursor? = if (
-        PermissionHelper.getMediaAccessLevel(context) == MediaAccessLevel.PARTIAL &&
-        Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM
-    ) {
-        context.contentResolver.query(
-            MediaStore.Files.getContentUri("external"),
-            projection,
-            Bundle().apply {
-                putBoolean(MediaStore.QUERY_ARG_LATEST_SELECTION_ONLY, true)
-                putString(
-                    ContentResolver.QUERY_ARG_SQL_SELECTION,
-                    "${MediaStore.Files.FileColumns.MEDIA_TYPE} = ?"
-                )
-                putStringArray(
-                    ContentResolver.QUERY_ARG_SQL_SELECTION_ARGS,
-                    arrayOf(MediaStore.Files.FileColumns.MEDIA_TYPE_IMAGE.toString())
-                )
-                if (sortOrder != null) {
-                    putString(ContentResolver.QUERY_ARG_SQL_SORT_ORDER, sortOrder)
-                }
-            },
-            null
-        )
-    } else {
-        context.contentResolver.query(
-            MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-            projection,
-            null,
-            null,
-            sortOrder
-        )
+        sortOrder: String?,
+        selectedDirectories: Set<String>
+    ): List<Cursor> {
+        val directories = selectedDirectories.map { it.normalizedDirectory() }.filter { it.isNotEmpty() }
+        val selection = directories.takeIf { it.isNotEmpty() }?.joinToString(" OR ") {
+            "(${MediaStore.Images.Media.RELATIVE_PATH} = ? OR ${MediaStore.Images.Media.RELATIVE_PATH} LIKE ? ESCAPE '\\')"
+        }
+        val selectionArgs = directories.flatMap { directory ->
+            val escaped = directory
+                .replace("\\", "\\\\")
+                .replace("%", "\\%")
+                .replace("_", "\\_")
+            listOf("$directory/", "$escaped/%")
+        }.toTypedArray()
+        val queryArgs = Bundle().apply {
+            if (selection != null) {
+                putString(ContentResolver.QUERY_ARG_SQL_SELECTION, selection)
+                putStringArray(ContentResolver.QUERY_ARG_SQL_SELECTION_ARGS, selectionArgs)
+            }
+            if (sortOrder != null) putString(ContentResolver.QUERY_ARG_SQL_SORT_ORDER, sortOrder)
+        }
+        return MediaStore.getExternalVolumeNames(context).mapNotNull { volume ->
+            context.contentResolver.query(
+                MediaStore.Images.Media.getContentUri(volume),
+                projection + MediaStore.MediaColumns.VOLUME_NAME,
+                queryArgs,
+                null
+            )
+        }
     }
 }

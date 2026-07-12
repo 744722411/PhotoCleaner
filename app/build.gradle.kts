@@ -16,7 +16,7 @@ android {
         applicationId = "com.photocleaner"
         minSdk = 30
         targetSdk = 37
-        versionCode = 20
+        versionCode = 20260712
         versionName = "2026.07.12"
         testInstrumentationRunner = "dagger.hilt.android.testing.HiltTestRunner"
     }
@@ -37,7 +37,7 @@ android {
     }
 
     buildFeatures {
-        buildConfig = false
+        buildConfig = true
         compose = true
     }
 

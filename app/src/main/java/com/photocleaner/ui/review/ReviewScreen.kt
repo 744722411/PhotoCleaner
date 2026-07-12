@@ -124,7 +124,7 @@ fun ReviewScreen(
                     containerColor = RedAccent,
                     contentColor = Color.White
                 ) {
-                    Icon(Icons.Default.Delete, contentDescription = null)
+                    Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.delete))
                 }
             }
         }
@@ -239,12 +239,6 @@ fun ReviewScreen(
                 }
             }
 
-        ReviewPendingDeleteBanner(
-                uiState = uiState,
-                onUndo = { viewModel.undoDelete() },
-                onCommit = { viewModel.commitPendingDeletes() },
-                modifier = Modifier.align(Alignment.BottomCenter)
-            )
         }
     }
 
@@ -272,7 +266,7 @@ fun ReviewScreen(
                 if (isPendingBatchDelete) {
                     viewModel.deleteSelected()
                 } else {
-                    pendingDeletePhotos.forEach { viewModel.deletePhoto(it) }
+                    viewModel.deletePhotos(pendingDeletePhotos)
                 }
                 showDeleteConfirmDialog = false
                 pendingDeletePhotos = emptyList()
@@ -439,9 +433,9 @@ private fun ReviewSummary(
                 color = BlueAccent,
                 fontWeight = FontWeight.Bold
             )
-        } else if (uiState.lastDeletedPhotos.isNotEmpty()) {
+        } else if (uiState.isDeleteRequestInFlight) {
             Text(
-                text = stringResource(R.string.review_pending, uiState.lastDeletedPhotos.size),
+                text = stringResource(R.string.review_delete_in_progress),
                 style = MaterialTheme.typography.labelLarge,
                 color = YellowAccent,
                 fontWeight = FontWeight.Bold
@@ -494,63 +488,6 @@ private fun ReviewSwipeContent(
             onSwipedLeft = { onDelete(topPhoto) },
             onSwipedRight = { onKeep(topPhoto) }
         )
-    }
-}
-
-@Composable
-private fun ReviewPendingDeleteBanner(
-    uiState: ReviewUiState,
-    onUndo: () -> Unit,
-    onCommit: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    AnimatedVisibility(
-        visible = uiState.showUndo || uiState.lastDeletedPhotos.isNotEmpty(),
-        enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
-        exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
-        modifier = modifier.padding(16.dp)
-    ) {
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = DarkSurfaceVariant),
-            shape = RoundedCornerShape(16.dp)
-        ) {
-            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = if (uiState.showUndo) Icons.Default.Delete else Icons.Default.Warning,
-                        contentDescription = null,
-                        tint = if (uiState.showUndo) RedAccent else YellowAccent
-                    )
-                    Text(
-                        text = if (uiState.showUndo) {
-                            stringResource(R.string.review_marked, uiState.lastDeletedPhotos.size)
-                        } else {
-                            stringResource(R.string.review_pending_submit, uiState.lastDeletedPhotos.size)
-                        },
-                        color = Color.White,
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    TextButton(onClick = onUndo) {
-                        Text(stringResource(R.string.undo), color = BlueAccent, fontWeight = FontWeight.Bold)
-                    }
-                    if (!uiState.showUndo && uiState.lastDeletedPhotos.isNotEmpty()) {
-                        Button(
-                            onClick = onCommit,
-                            colors = ButtonDefaults.buttonColors(containerColor = RedAccent)
-                        ) {
-                            Text(stringResource(R.string.commit_delete))
-                        }
-                    }
-                }
-            }
-        }
     }
 }
 

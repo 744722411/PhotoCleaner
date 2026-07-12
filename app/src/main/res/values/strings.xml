@@ -49,6 +49,9 @@
 
     <!-- Scan screen -->
     <string name="scan_title">照片扫描</string>
+    <string name="scan_notification_channel">照片扫描</string>
+    <string name="scan_notification_title">正在扫描照片</string>
+    <string name="scan_notification_body">本地检测正在后台运行</string>
     <string name="scan_subtitle_scanning">正在读取和检测本地照片</string>
     <string name="scan_subtitle_complete">本轮处理已完成</string>
     <string name="scan_subtitle_ready">选择目录并开始新一轮扫描</string>
@@ -122,14 +125,15 @@
     <string name="review_photo_count">%1$d 张</string>
     <string name="review_selected">已选 %1$d</string>
     <string name="review_pending">待提交 %1$d</string>
+    <string name="review_delete_in_progress">等待系统确认</string>
     <string name="review_marked">已标记 %1$d 张照片</string>
-    <string name="review_pending_submit">待提交 %1$d 张到系统回收站</string>
+    <string name="review_pending_submit">等待永久删除 %1$d 张照片</string>
     <string name="review_similar_group">相似照片组</string>
     <string name="review_similar_candidates">%1$d 张候选</string>
     <string name="review_keep_best">保留最佳</string>
     <string name="review_confirm_delete_title">确认删除</string>
     <string name="review_confirm_delete_count">即将标记 %1$d 张照片</string>
-    <string name="review_confirm_delete_body">确认后会先进入待提交状态，随后由系统回收站完成删除。</string>
+    <string name="review_confirm_delete_body">确认后系统会请求永久删除这些照片，此操作无法撤销。</string>
     <string name="filter_all">全部</string>
     <string name="filter_similar">相似</string>
     <string name="filter_large">超大媒体</string>
@@ -167,4 +171,5 @@
     <string name="settings_confirm_title">清理前仍需确认</string>
     <string name="settings_confirm_desc">扫描结果会进入审查页，删除前可以逐张确认或撤销。</string>
     <string name="settings_footer">当前版本专注本地照片清理，不需要任何联网分类配置。</string>
+    <string name="settings_footer_version">当前版本 %1$s，专注本地照片清理，不需要任何联网分类配置。</string>
 </resources>

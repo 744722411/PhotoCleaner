@@ -11,11 +11,11 @@ import javax.inject.Singleton
 
 /**
  * Platform-coupled service that builds Android [PendingIntent]s for the system
- * trash flow. Deliberately kept out of the pure domain [PhotoRepository] so the
+ * permanent-delete flow. Deliberately kept out of the pure domain [PhotoRepository] so the
  * domain layer does not depend on Android framework types.
  */
 interface TrashService {
-    suspend fun createTrashPendingIntent(photos: List<Photo>): PendingIntent?
+    suspend fun createDeletePendingIntent(photos: List<Photo>): PendingIntent?
 }
 
 @Singleton
@@ -23,10 +23,10 @@ class MediaStoreTrashService @Inject constructor(
     @param:ApplicationContext private val context: Context
 ) : TrashService {
 
-    override suspend fun createTrashPendingIntent(photos: List<Photo>): PendingIntent? {
+    override suspend fun createDeletePendingIntent(photos: List<Photo>): PendingIntent? {
         val uris = photos.map { Uri.parse(it.uri) }
         return try {
-            MediaStore.createTrashRequest(context.contentResolver, uris, true)
+            MediaStore.createDeleteRequest(context.contentResolver, uris)
         } catch (_: Exception) {
             null
         }

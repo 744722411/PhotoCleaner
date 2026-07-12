@@ -45,6 +45,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.photocleaner.R
+import com.photocleaner.BuildConfig
 import com.photocleaner.ui.components.GlassCard
 import com.photocleaner.ui.components.ModernSectionHeader
 import com.photocleaner.ui.theme.BlueAccent
@@ -194,7 +195,7 @@ fun SettingsScreen(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
-                    text = stringResource(R.string.settings_footer),
+                    text = stringResource(R.string.settings_footer_version, BuildConfig.VERSION_NAME),
                     modifier = Modifier.padding(14.dp),
                     color = GreenAccent,
                     style = MaterialTheme.typography.bodyMedium,

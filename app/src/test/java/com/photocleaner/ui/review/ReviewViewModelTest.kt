@@ -11,7 +11,9 @@ import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertFalse
@@ -49,18 +51,26 @@ class ReviewViewModelTest {
     @Test
     fun cancelSystemTrashRestoresPendingPhoto() = runTest(mainDispatcherRule.dispatcher) {
         advanceUntilIdle()
+        coEvery { trashService.createDeletePendingIntent(any()) } returns mockk()
         viewModel.deletePhoto(photo)
+        advanceUntilIdle()
         viewModel.onTrashCanceled()
         advanceUntilIdle()
 
-        assertFalse(viewModel.uiState.value.lastDeletedPhotos.isNotEmpty())
+        assertFalse(viewModel.uiState.value.isDeleteRequestInFlight)
         coVerify(exactly = 0) { repository.deletePhotos(any()) }
     }
 
     @Test
     fun confirmedSystemTrashUpdatesLocalState() = runTest(mainDispatcherRule.dispatcher) {
         advanceUntilIdle()
+        val pendingIntent = mockk<android.app.PendingIntent>()
+        coEvery { trashService.createDeletePendingIntent(any()) } returns pendingIntent
+        coEvery { repository.findDeletedPhotoIds(any()) } returns listOf(photo.id)
+        val event = async { viewModel.event.first() }
         viewModel.deletePhoto(photo)
+        advanceUntilIdle()
+        assertTrue(event.await() is ReviewEvent.LaunchTrashIntent)
         viewModel.onTrashConfirmed()
         advanceUntilIdle()
 
@@ -68,15 +78,31 @@ class ReviewViewModelTest {
     }
 
     @Test
+    fun unverifiedDeleteRestoresPhotoAndReportsFailure() = runTest(mainDispatcherRule.dispatcher) {
+        advanceUntilIdle()
+        coEvery { trashService.createDeletePendingIntent(any()) } returns mockk()
+        coEvery { repository.findDeletedPhotoIds(any()) } returns emptyList()
+
+        viewModel.deletePhoto(photo)
+        advanceUntilIdle()
+        viewModel.onTrashConfirmed()
+        advanceUntilIdle()
+
+        coVerify(exactly = 0) { repository.deletePhotos(any()) }
+        assertFalse(viewModel.uiState.value.isDeleteRequestInFlight)
+        assertTrue(viewModel.uiState.value.error?.contains("1 张照片") == true)
+    }
+
+    @Test
     fun failedTrashRequestClearsPendingState() = runTest(mainDispatcherRule.dispatcher) {
         advanceUntilIdle()
-        coEvery { trashService.createTrashPendingIntent(any()) } returns null
+        coEvery { trashService.createDeletePendingIntent(any()) } returns null
 
         viewModel.deletePhoto(photo)
         viewModel.commitPendingDeletes()
         advanceUntilIdle()
 
-        assertTrue(viewModel.uiState.value.lastDeletedPhotos.isEmpty())
+        assertFalse(viewModel.uiState.value.isDeleteRequestInFlight)
         assertTrue(viewModel.uiState.value.error != null)
     }
 }

@@ -10,6 +10,9 @@ import com.photocleaner.domain.usecase.ScanPhotosUseCase
 import com.photocleaner.service.LogStatus
 import com.photocleaner.service.ScanLogEntry
 import com.photocleaner.service.ScanStateHolder
+import com.photocleaner.service.ScanForegroundService
+import dagger.hilt.android.qualifiers.ApplicationContext
+import android.content.Context
 import com.photocleaner.service.ScanUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -28,7 +31,8 @@ class ScanViewModel @Inject constructor(
     private val scanPhotosUseCase: ScanPhotosUseCase,
     private val settingsRepository: SettingsRepository,
     private val photoRepository: PhotoRepository,
-    private val scanStateHolder: ScanStateHolder
+    private val scanStateHolder: ScanStateHolder,
+    @param:ApplicationContext private val context: Context
 ) : ViewModel() {
 
     private val localState = MutableStateFlow(
@@ -200,6 +204,7 @@ class ScanViewModel @Inject constructor(
                     return@launch
                 }
                 settingsRepository.setSelectedDirectories(selectedDirectories)
+                ScanForegroundService.start(context)
 
                 scanStateHolder.updateState {
                     it.copy(
@@ -302,6 +307,8 @@ class ScanViewModel @Inject constructor(
                         ScanLogEntry(message = "扫描失败: ${e.message}", status = LogStatus.ERROR)
                     )
                 }
+            } finally {
+                ScanForegroundService.stop(context)
             }
         }
     }
@@ -318,6 +325,7 @@ class ScanViewModel @Inject constructor(
 
     fun stopScan() {
         scanJob?.cancel()
+        ScanForegroundService.stop(context)
         scanStateHolder.updateState {
             it.copy(
                 isScanning = false,

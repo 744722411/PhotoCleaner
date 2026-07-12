@@ -50,7 +50,9 @@ class ScanPhotosUseCase @Inject constructor(
 
         val allDbPhotos = repository.getAllPhotosSync()
         
-        val toDelete = if (selectedDirectories.isNotEmpty()) {
+        val toDelete = if (!repository.hasFullMediaAccess()) {
+            emptyList()
+        } else if (selectedDirectories.isNotEmpty()) {
             // Helper normalization function
             fun String.normalized(): String = this.replace('\\', '/').trim().trim('/')
             val normSelected = selectedDirectories.map { it.normalized() }.filter { it.isNotEmpty() }
