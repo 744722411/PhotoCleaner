@@ -102,10 +102,6 @@ fun SettingsScreen(
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     ModernSectionHeader(title = stringResource(R.string.settings_scan_behavior), icon = Icons.Default.Settings)
-                    BatchSizeSelector(
-                        batchSize = uiState.batchSize,
-                        onBatchSizeChange = viewModel::setBatchSize
-                    )
                     SettingSwitchRow(
                         icon = Icons.Default.RestartAlt,
                         title = stringResource(R.string.settings_rescan_existing_title),
@@ -209,48 +205,7 @@ fun SettingsScreen(
     }
 }
 
-@Composable
-fun BatchSizeSelector(
-    batchSize: Int,
-    onBatchSizeChange: (Int) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Icon(Icons.Default.Speed, contentDescription = null, tint = BlueAccent, modifier = Modifier.size(20.dp))
-            Text(
-                text = stringResource(R.string.scan_batch_size),
-                color = Color.White,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold
-            )
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-            listOf(100, 500, 2000, 0).forEach { option ->
-                val selected = batchSize == option
-                val label = if (option == 0) stringResource(R.string.scan_batch_all) else option.toString()
-                Button(
-                    onClick = { onBatchSizeChange(option) },
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(12.dp),
-                    border = if (selected) null else BorderStroke(1.dp, Color.White.copy(alpha = 0.18f)),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = if (selected) BlueAccent else Color.White.copy(alpha = 0.06f),
-                        contentColor = Color.White
-                    ),
-                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 10.dp)
-                ) {
-                    Text(label, style = MaterialTheme.typography.labelLarge, maxLines = 1)
-                }
-            }
-        }
-        Text(
-            text = stringResource(R.string.settings_batch_desc),
-            color = Color.White.copy(alpha = 0.6f),
-            style = MaterialTheme.typography.bodySmall
-        )
-    }
-}
+
 
 @Composable
 private fun SettingSwitchRow(

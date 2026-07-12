@@ -76,7 +76,6 @@ import com.photocleaner.service.ScanLogEntry
 import com.photocleaner.service.ScanUiState
 import com.photocleaner.ui.components.GlassCard
 import com.photocleaner.ui.components.GradientProgressBar
-import com.photocleaner.ui.settings.BatchSizeSelector
 import com.photocleaner.ui.theme.BlueAccent
 import com.photocleaner.ui.theme.GreenAccent
 import com.photocleaner.ui.theme.Purple80
