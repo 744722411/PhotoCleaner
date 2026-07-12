@@ -35,7 +35,6 @@ class ScanPhotosUseCase @Inject constructor(
         onLog: (ScanLog) -> Unit = {}
     ): List<Photo> {
         onLog(ScanLog("", ScanLogStatus.INFO, "正在扫描相册..."))
-        val existingPhotoIds = repository.getAllPhotoIds().toSet()
         val activePhotoIds = repository.getActivePhotoIds().toSet()
         val photos = if (selectedDirectories.isNotEmpty()) {
             repository.scanPhotos(selectedDirectories)
@@ -49,12 +48,31 @@ class ScanPhotosUseCase @Inject constructor(
             repository.clearTrashStatus(restoredIds.toList())
         }
 
-        if (selectedDirectories.isEmpty()) {
-            val toDelete = existingPhotoIds - scannedIds
-            if (toDelete.isNotEmpty()) {
-                onLog(ScanLog("", ScanLogStatus.INFO, "清理 ${toDelete.size} 张已删除照片的记录..."))
-                repository.deletePhotosByIds(toDelete.toList())
-            }
+        val allDbPhotos = repository.getAllPhotosSync()
+        
+        val toDelete = if (selectedDirectories.isNotEmpty()) {
+            // Helper normalization function
+            fun String.normalized(): String = this.replace('\\', '/').trim().trim('/')
+            val normSelected = selectedDirectories.map { it.normalized() }.filter { it.isNotEmpty() }
+            
+            // Only clean photos that are in the database AND belong to one of the selected directories
+            // but were NOT scanned (meaning they were deleted outside the app)
+            allDbPhotos.filter { dbPhoto ->
+                val dbPhotoNorm = dbPhoto.filePath.normalized()
+                val belongsToSelected = normSelected.any { dir ->
+                    dbPhotoNorm == dir || dbPhotoNorm.startsWith("$dir/", ignoreCase = true)
+                }
+                belongsToSelected && dbPhoto.id !in scannedIds
+            }.map { it.id }
+        } else {
+            // If no directories specified, compare all existing vs scanned
+            val existingPhotoIds = allDbPhotos.map { it.id }.toSet()
+            (existingPhotoIds - scannedIds).toList()
+        }
+
+        if (toDelete.isNotEmpty()) {
+            onLog(ScanLog("", ScanLogStatus.INFO, "清理 ${toDelete.size} 张已删除照片的记录..."))
+            repository.deletePhotosByIds(toDelete)
         }
 
         val candidates = if (rescanExistingPhotos) {

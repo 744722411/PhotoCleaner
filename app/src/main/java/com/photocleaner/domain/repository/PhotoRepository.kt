@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.Flow
  */
 interface PhotoRepository {
     fun getAllPhotos(): Flow<List<Photo>>
+    suspend fun getAllPhotosSync(): List<Photo>
     fun getPhotosByClassification(classification: Classification): Flow<List<Photo>>
     fun getClassifiedCount(): Flow<Int>
     fun getTotalCount(): Flow<Int>

@@ -34,6 +34,10 @@ class PhotoRepositoryImpl @Inject constructor(
     override fun getAllPhotos(): Flow<List<Photo>> =
         photoDao.getAllPhotos().map { entities -> entities.map { mapper.toDomain(it) } }
 
+    override suspend fun getAllPhotosSync(): List<Photo> = withContext(Dispatchers.IO) {
+        photoDao.getAllPhotosSync().map { mapper.toDomain(it) }
+    }
+
     override fun getPhotosByClassification(classification: Classification): Flow<List<Photo>> =
         photoDao.getPhotosByClassification(classification.name).map { entities ->
             entities.map { mapper.toDomain(it) }
@@ -99,6 +103,8 @@ class PhotoRepositoryImpl @Inject constructor(
                     MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id
                 ).toString()
 
+                val relativePath = if (relPathCol >= 0) cursor.getString(relPathCol).orEmpty().normalizedDirectory() else ""
+
                 photos.add(
                     Photo(
                         id = id,
@@ -110,7 +116,7 @@ class PhotoRepositoryImpl @Inject constructor(
                         size = cursor.getLong(sizeCol),
                         dateAdded = cursor.getLong(dateAddedCol),
                         dateModified = cursor.getLong(dateModCol),
-                        filePath = ""
+                        filePath = relativePath
                     )
                 )
             }
@@ -192,7 +198,11 @@ class PhotoRepositoryImpl @Inject constructor(
 
     override suspend fun deletePhotos(photos: List<Photo>) {
         val ids = photos.map { it.id }
-        if (ids.isNotEmpty()) photoDao.setTrashStatus(ids, true)
+        if (ids.isNotEmpty()) {
+            ids.chunked(900).forEach { chunk ->
+                photoDao.setTrashStatus(chunk, true)
+            }
+        }
     }
 
     override suspend fun getPhotoById(id: Long): Photo? = photoDao.getPhotoById(id)?.let { mapper.toDomain(it) }
@@ -202,10 +212,20 @@ class PhotoRepositoryImpl @Inject constructor(
     override suspend fun getActivePhotoIds(): List<Long> = photoDao.getActivePhotoIds()
 
     override suspend fun clearTrashStatus(ids: List<Long>) {
-        if (ids.isNotEmpty()) photoDao.clearTrashStatus(ids)
+        if (ids.isNotEmpty()) {
+            ids.chunked(900).forEach { chunk ->
+                photoDao.clearTrashStatus(chunk)
+            }
+        }
     }
 
-    override suspend fun deletePhotosByIds(ids: List<Long>) = photoDao.deleteByIds(ids)
+    override suspend fun deletePhotosByIds(ids: List<Long>) {
+        if (ids.isNotEmpty()) {
+            ids.chunked(900).forEach { chunk ->
+                photoDao.deleteByIds(chunk)
+            }
+        }
+    }
 
     override suspend fun insertPhotos(photos: List<Photo>) {
         photoDao.insertPhotos(photos.map { mapper.toEntity(it) })
