@@ -224,24 +224,7 @@ class ScanViewModel @Inject constructor(
                     )
                 )
 
-                val batchSize = settingsRepository.getBatchSizeSync()
                 val rescanExistingPhotos = settingsRepository.getRescanExistingPhotosSync()
-                val targetLabel = if (rescanExistingPhotos) "照片" else "新照片"
-                if (batchSize > 0) {
-                    scanStateHolder.addLog(
-                        ScanLogEntry(
-                            message = "最多处理$targetLabel: $batchSize",
-                            status = LogStatus.INFO
-                        )
-                    )
-                } else {
-                    scanStateHolder.addLog(
-                        ScanLogEntry(
-                            message = "处理数量: 全部$targetLabel",
-                            status = LogStatus.INFO
-                        )
-                    )
-                }
                 scanStateHolder.addLog(
                     ScanLogEntry(
                         message = if (rescanExistingPhotos) "模式: 重新检测已入库照片" else "模式: 只处理新照片",
@@ -252,7 +235,7 @@ class ScanViewModel @Inject constructor(
                 val scannedPhotos = try {
                     scanPhotosUseCase(
                         selectedDirectories = selectedDirectories,
-                        batchSize = batchSize,
+                        batchSize = 0,
                         rescanExistingPhotos = rescanExistingPhotos,
                         isPaused = { scanStateHolder.uiState.value.isPaused },
                         onProgress = { scanned, total ->

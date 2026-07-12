@@ -72,19 +72,24 @@ class PhotoRepositoryImpl @Inject constructor(
             val dateAddedCol = cursor.getColumnIndex(MediaStore.Images.Media.DATE_ADDED)
             val dateModCol = cursor.getColumnIndex(MediaStore.Images.Media.DATE_MODIFIED)
             val relPathCol = cursor.getColumnIndex(MediaStore.Images.Media.RELATIVE_PATH)
+            val dataCol = cursor.getColumnIndex(MediaStore.Images.Media.DATA)
 
             if (idCol < 0 || nameCol < 0 || mimeCol < 0 || widthCol < 0 || heightCol < 0 || sizeCol < 0 || dateAddedCol < 0 || dateModCol < 0) {
                 return@use
             }
 
-            val normalizedSelectedDirectories = selectedDirectories.mapTo(mutableSetOf()) { it.normalizedDirectory() }
+            val normalizedSelectedDirectories = selectedDirectories
+                .map { it.normalizedDirectory() }
+                .filterTo(mutableSetOf()) { it.isNotEmpty() }
 
             while (cursor.moveToNext()) {
                 if (useDirectoryFilter) {
                     val relativePath = if (relPathCol >= 0) cursor.getString(relPathCol).orEmpty().normalizedDirectory() else ""
+                    val fullPath = if (dataCol >= 0) cursor.getString(dataCol).orEmpty().normalizedDirectory() else ""
+                    
                     val matchesAny = normalizedSelectedDirectories.any { dir ->
-                        relativePath == dir ||
-                        relativePath.startsWith("$dir/", ignoreCase = true)
+                        (relativePath.isNotEmpty() && (relativePath == dir || relativePath.startsWith("$dir/", ignoreCase = true))) ||
+                        (fullPath.isNotEmpty() && (fullPath.contains("/$dir/", ignoreCase = true) || fullPath.endsWith("/$dir", ignoreCase = true)))
                     }
                     if (!matchesAny) continue
                 }
@@ -209,7 +214,14 @@ class PhotoRepositoryImpl @Inject constructor(
     override suspend fun clearAll() = photoDao.clearAll()
 
     private fun mediaPathProjection(): Array<String> =
-        arrayOf(MediaStore.Images.Media.RELATIVE_PATH)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            arrayOf(
+                MediaStore.Images.Media.RELATIVE_PATH,
+                MediaStore.Images.Media.DATA
+            )
+        } else {
+            arrayOf(MediaStore.Images.Media.DATA)
+        }
 
     private fun String.normalizedDirectory(): String =
         replace('\\', '/')

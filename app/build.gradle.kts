@@ -17,7 +17,7 @@ android {
         minSdk = 30
         targetSdk = 37
         versionCode = 20
-        versionName = "1.10.0"
+        versionName = "2026.07.12"
         testInstrumentationRunner = "dagger.hilt.android.testing.HiltTestRunner"
     }
 

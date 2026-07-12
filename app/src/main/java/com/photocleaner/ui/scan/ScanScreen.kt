@@ -310,29 +310,18 @@ fun ScanReadyContent(
         Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Text(stringResource(R.string.scan_scope), style = MaterialTheme.typography.titleMedium, color = Color.White, fontWeight = FontWeight.Bold)
             Text(stringResource(R.string.scan_scope_hint), style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.65f))
-            val summary = if (batchSize > 0) {
-                stringResource(
-                    R.string.scan_ready_summary_limited,
-                    selectedDirectories.size,
-                    selectedImageCount,
-                    batchSize,
-                    targetLabel
-                )
-            } else {
-                stringResource(
-                    R.string.scan_ready_summary_all,
-                    selectedDirectories.size,
-                    selectedImageCount,
-                    targetLabel
-                )
-            }
+            val summary = stringResource(
+                R.string.scan_ready_summary_all,
+                selectedDirectories.size,
+                selectedImageCount,
+                targetLabel
+            )
             Text(
                 text = summary,
                 style = MaterialTheme.typography.bodySmall,
                 color = BlueAccent,
                 fontWeight = FontWeight.Medium
             )
-            BatchSizeSelector(batchSize = batchSize, onBatchSizeChange = onBatchSizeChange)
             if (discoveredDirectories.isEmpty() && isDiscovering) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = BlueAccent)
