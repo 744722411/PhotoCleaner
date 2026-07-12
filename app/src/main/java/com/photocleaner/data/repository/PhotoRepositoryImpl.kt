@@ -84,16 +84,42 @@ class PhotoRepositoryImpl @Inject constructor(
 
             val normalizedSelectedDirectories = selectedDirectories
                 .map { it.normalizedDirectory() }
-                .filterTo(mutableSetOf()) { it.isNotEmpty() }
+                .filterTo(mutableSetOf()) { 
+                    it.isNotEmpty() && 
+                    it != "0" && 
+                    it != "emulated" && 
+                    it != "storage" && 
+                    it != "emulated/0" 
+                }
 
             while (cursor.moveToNext()) {
                 if (useDirectoryFilter) {
                     val relativePath = if (relPathCol >= 0) cursor.getString(relPathCol).orEmpty().normalizedDirectory() else ""
-                    val fullPath = if (dataCol >= 0) cursor.getString(dataCol).orEmpty().normalizedDirectory() else ""
+                    
+                    // Extract relative path from absolute path (fullPath) if available
+                    val fullPath = if (dataCol >= 0) cursor.getString(dataCol).orEmpty().replace('\\', '/') else ""
+                    val extractedRelPath = if (fullPath.isNotEmpty()) {
+                        // Strips absolute storage prefixes to get a pure relative path like "DCIM/Camera/IMG.jpg"
+                        val cleanPath = fullPath
+                            .substringAfter("storage/emulated/0/")
+                            .substringAfter("sdcard/")
+                            .trim('/')
+                        
+                        // Strip the filename to get the directory part only
+                        if (cleanPath.contains('/')) {
+                            cleanPath.substringBeforeLast('/')
+                        } else {
+                            ""
+                        }
+                    } else {
+                        ""
+                    }
                     
                     val matchesAny = normalizedSelectedDirectories.any { dir ->
+                        // Match relative path
                         (relativePath.isNotEmpty() && (relativePath == dir || relativePath.startsWith("$dir/", ignoreCase = true))) ||
-                        (fullPath.isNotEmpty() && (fullPath.contains("/$dir/", ignoreCase = true) || fullPath.endsWith("/$dir", ignoreCase = true)))
+                        // Match extracted path from physical path
+                        (extractedRelPath.isNotEmpty() && (extractedRelPath == dir || extractedRelPath.startsWith("$dir/", ignoreCase = true)))
                     }
                     if (!matchesAny) continue
                 }
