@@ -1,8 +1,15 @@
-# PhotoCleaner - Local Photo Cleanup Assistant
+# PhotoCleaner - Local Photo Cleanup Assistant (Archived)
+
+> ⚠️ **Project Status: Retired & Archived (September 2026)**
+>
+> This repository is **permanently archived and read-only**. The codebase is preserved as an architectural reference for modern Android engineering (Kotlin 2.4, Jetpack Compose, Room, Hilt, MediaStore SAF) and strictly offline on-device media processing.
+>
+> ### 📦 Retrospective & Archive Rationale:
+> 1. **Superseded by Native OS Capabilities**: Modern mobile OSes (e.g. Xiaomi HyperOS, Apple iOS) integrate NPU acceleration, system recycle bins, and native duplicate/screenshot cleanup directly into the OS layer. Third-party apps restricted by storage sandboxes cannot compete with native OS performance and fluidity.
+> 2. **Tension between Offline Privacy and Smart Automation**: Without cloud vision models, lightweight on-device ML produces coarse labels with moderate confidence. To prevent accidental data loss, the app required tedious manual confirmation, undermining the core value of an automated cleanup utility.
+> 3. **Engineering Objectives Achieved**: Successfully validated target SDK 37 (Android 16), scoped media permissions, Material 3 adaptive UI for foldables/tablets, and MediaStore permanent deletion workflows.
 
 > Chinese documentation: [README_CN.md](README_CN.md)
->
-> Next iteration product design (Chinese): [PRODUCT_DESIGN_NEXT.md](PRODUCT_DESIGN_NEXT.md)
 
 ---
 
